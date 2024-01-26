@@ -1,0 +1,21 @@
+
+struct DemoMessage {
+    int     v1;
+    int8    v2;
+    int16   v3;
+    int32   v4;
+    int64   v5;
+
+    uint    v6;
+    uint8   v7;
+    uint16  v8;
+    uint32  v9;
+    uint64  v10;
+
+    string  v11;
+
+    float   v12;
+    double  v13;
+
+    bool v14;
+}
