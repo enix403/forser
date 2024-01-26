@@ -8,7 +8,7 @@ pub mod token;
 use std::fs;
 use std::io::{BufReader, Read};
 
-use crate::lexer::{Source, Lexer};
+use crate::lexer::{FileSource, Lexer};
 use crate::token::Token;
 
 fn file_source(path: &str) -> impl Read {
@@ -18,8 +18,8 @@ fn file_source(path: &str) -> impl Read {
 }
 
 fn main() {
-    let source = lexer::FileSource::new("./files/one.fr").expect("Failed to open files");
-    let mut lex = lexer::LexerBuilder::new(&source);
+    let source = FileSource::new("./files/one.fr").expect("Failed to open files");
+    let mut lex = Lexer::new(&source);
 
     loop {
         let tok = lex.next_token();

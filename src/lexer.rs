@@ -29,20 +29,6 @@ impl Source for FileSource {
     }
 }
 
-pub struct LexerBuilder<'a, S: 'a> {
-    source: &'a S,
-}
-
-impl<'a, S> LexerBuilder<'a, S>
-where
-    S: Source,
-{
-    pub fn new(source: &'a S) -> Lexer<'a, std::str::Chars<'a>> {
-        let chars = source.get_contents().chars();
-        Lexer::new(chars)
-    }
-}
-
 pub struct Lexer<'a, R: 'a> {
     reader: R,
     current: Option<char>,
@@ -51,11 +37,18 @@ pub struct Lexer<'a, R: 'a> {
     _phantom: PhantomData<&'a ()>,
 }
 
+impl<'a> Lexer<'a, ()> {
+    pub fn new<S: Source>(source: &'a S) -> Lexer<'a, std::str::Chars<'a>> {
+        let chars = source.get_contents().chars();
+        Lexer::new_from_reader(chars)
+    }
+}
+
 impl<'a, R: 'a> Lexer<'a, R>
 where
     R: Iterator<Item = char>,
 {
-    pub fn new(mut reader: R) -> Self {
+    pub fn new_from_reader(mut reader: R) -> Self {
         Self {
             current: None,
             next: reader.next(),
@@ -64,6 +57,7 @@ where
             _phantom: PhantomData,
         }
     }
+
     pub fn consume(&mut self) -> Option<char> {
         self.current = self.next.clone();
         self.next = self.reader.next();
