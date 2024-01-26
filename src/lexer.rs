@@ -1,66 +1,67 @@
-use std::marker::PhantomData;
+use crate::token::{self, Token};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use crate::token::{self, Token};
-
 pub trait Source {
-    fn get_contents(&self) -> &'_ str;
+    fn next_char(&mut self) -> Option<char>;
+    // fn get_chars<'a>(&'a self) -> impl Iterator<Item = char> + 'a;
 }
 
-pub struct FileSource {
-    path: PathBuf,
+pub struct FileSource<'a> {
+    chars: std::str::Chars<'a>,
+}
+
+impl<'a> Source for FileSource<'a> {
+    fn next_char(&mut self) -> Option<char> {
+        self.chars.next()
+    }
+}
+
+pub struct ForserFile {
     contents: String,
 }
 
-impl FileSource {
+impl ForserFile {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        let path = path.as_ref().to_path_buf();
-        Ok(Self {
-            contents: fs::read_to_string(&path)?,
-            path,
-        })
+        let contents = fs::read_to_string(path)?;
+        Ok(Self { contents })
+    }
+
+    pub fn source(&self) -> impl Source + '_ {
+        FileSource { chars: self.contents.chars() }
     }
 }
 
-impl Source for FileSource {
-    fn get_contents(&self) -> &'_ str {
-        self.contents.as_str()
-    }
-}
+/* ============================= */
 
-pub struct Lexer<'a, R: 'a> {
-    reader: R,
+// fn lex_source<'a, S: Source + 'a>(source: &'a S) -> Lexer<'a, impl Iterator<Item = char> + 'a> {
+//     let mut source = source.get_chars();
+//     Lexer::new(&mut source)
+// }
+
+pub struct Lexer<'a, S> {
+    source: &'a mut S,
     current: Option<char>,
     next: Option<char>,
     position: usize, // Position of next character
-    _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> Lexer<'a, ()> {
-    pub fn new<S: Source>(source: &'a S) -> Lexer<'a, std::str::Chars<'a>> {
-        let chars = source.get_contents().chars();
-        Lexer::new_from_reader(chars)
-    }
-}
-
-impl<'a, R: 'a> Lexer<'a, R>
+impl<'a, S> Lexer<'a, S>
 where
-    R: Iterator<Item = char>,
+    S: Source + 'a,
 {
-    pub fn new_from_reader(mut reader: R) -> Self {
+    pub fn new(source: &'a mut S) -> Self {
         Self {
             current: None,
-            next: reader.next(),
-            reader,
+            next: source.next_char(),
+            source,
             position: 0,
-            _phantom: PhantomData,
         }
     }
 
     pub fn consume(&mut self) -> Option<char> {
         self.current = self.next.clone();
-        self.next = self.reader.next();
+        self.next = self.source.next_char();
         self.position += 1;
         self.current.clone()
     }
@@ -104,5 +105,18 @@ where
         }
 
         ident
+    }
+}
+
+pub trait LexedTokenStream {
+    fn next_token(&mut self) -> Token;
+}
+
+impl<'a, S> LexedTokenStream for Lexer<'a, S>
+where
+    S: Source + 'a,
+{
+    fn next_token(&mut self) -> Token {
+        self.next_token()
     }
 }

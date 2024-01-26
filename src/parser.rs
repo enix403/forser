@@ -1,5 +1,4 @@
 use crate::token::Token;
-use crate::lexer::Lexer;
 
 enum BuiltInDataType {
     String,
