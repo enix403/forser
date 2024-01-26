@@ -3,11 +3,13 @@
 #![allow(unused_variables)]
 
 pub mod lexer;
+pub mod token;
 
 use std::fs;
 use std::io::{BufReader, Read};
 
-use crate::lexer::{Source, Lexer, Token};
+use crate::lexer::{Source, Lexer};
+use crate::token::Token;
 
 fn file_source(path: &str) -> impl Read {
     let file = fs::File::open(path).unwrap();
@@ -16,18 +18,14 @@ fn file_source(path: &str) -> impl Read {
 }
 
 fn main() {
-    // let source = "struct HelloWorld { int a, int b, string c, }".to_string();
-    // let source = source.chars();
-    // let mut lex = Lexer::new(source);
+    let source = lexer::FileSource::new("./files/one.fr").expect("Failed to open files");
+    let mut lex = lexer::LexerBuilder::new(&source);
 
-    let source = Source::file("./files/one.fr").expect("Failed to open files");
-    println!("{}", source.get_contents());
-
-    // loop {
-    //     let tok = lex.next_token();
-    //     println!("{:?}", tok);
-    //     if let Token::Eof = tok {
-    //         break;
-    //     }
-    // }
+    loop {
+        let tok = lex.next_token();
+        println!("{:?}", tok);
+        if let Token::Eof = tok {
+            break;
+        }
+    }
 }
