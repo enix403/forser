@@ -4,6 +4,7 @@
 
 pub mod lexer;
 pub mod token;
+pub mod parser;
 
 use std::fs;
 use std::io::{BufReader, Read};
