@@ -26,3 +26,5 @@ pub struct StructDefinition {
 pub struct Program {
     pub structs: Vec<StructDefinition>
 }
+
+/* ========================= */

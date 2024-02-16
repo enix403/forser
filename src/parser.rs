@@ -1,4 +1,4 @@
-use crate::items::{DataType, PrimitiveType, StructDefinition, StructField};
+use crate::items::{DataType, PrimitiveType, Program, StructDefinition, StructField};
 use crate::lexer::TokenStream;
 use crate::token::Token;
 use std::cell::{Cell, RefCell};
@@ -85,13 +85,17 @@ where
         self.structs.push(struct_def);
     }
 
-    pub fn parse(&mut self) {
+    pub fn parse(mut self) -> Program {
         loop {
             match self.consume() {
                 Token::Struct => self.parse_struct(),
                 Token::Eof => break,
                 _ => (),
             }
+        }
+
+        Program {
+            structs: self.structs
         }
     }
 }

@@ -2,7 +2,3 @@ struct AppReply {
     code: int,
     name: string,
 }
-
-struct Payload {
-    ages: int
-}

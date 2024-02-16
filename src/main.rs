@@ -33,7 +33,7 @@ fn main() {
     let mut lex = Lexer::new(&mut source);
 
     let mut parser = parser::Parser::new(lex);
-    parser.parse();
+    let program = parser.parse();
 
-    println!("{:#?}", parser.structs);
+    println!("{:#?}", program);
 }
