@@ -1,34 +1,39 @@
 #![allow(unused)]
-#![allow(unused_imports)]
 #![allow(unused_variables)]
+#![allow(unused_mut)]
+
+use clap::Parser;
+use std::path::PathBuf;
 
 pub mod lexer;
-// pub mod lexer2;
+pub mod items;
 pub mod token;
 pub mod parser;
 
-use std::fs;
-use std::io::{BufReader, Read};
+use lexer::ForserFile;
+use lexer::Lexer;
 
-use crate::lexer::{FileSource, Lexer, ForserFile};
-use crate::token::Token;
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+#[command(next_line_help = true)]
+struct Args {
+    /// Path to the input file
+    in_file: PathBuf,
 
-fn file_source(path: &str) -> impl Read {
-    let file = fs::File::open(path).unwrap();
-
-    BufReader::new(file)
+    /// Directory where the build files will be stored
+    #[arg(long, short)]
+    out_dir: Option<PathBuf>,
 }
 
 fn main() {
-    let file = ForserFile::new("./files/one.fr").expect("Failed to open files");
+    let args = Args::parse();
+
+    let file = ForserFile::new(args.in_file).expect("Failed to open files");
     let mut source = file.source();
     let mut lex = Lexer::new(&mut source);
 
-    loop {
-        let tok = lex.next_token();
-        println!("{:?}", tok);
-        if let Token::Eof = tok {
-            break;
-        }
-    }
+    let mut parser = parser::Parser::new(lex);
+    parser.parse();
+
+    println!("{:#?}", parser.structs);
 }

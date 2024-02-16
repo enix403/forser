@@ -4,7 +4,6 @@ use std::{fs, io};
 
 pub trait Source {
     fn next_char(&mut self) -> Option<char>;
-    // fn get_chars<'a>(&'a self) -> impl Iterator<Item = char> + 'a;
 }
 
 pub struct FileSource<'a> {
@@ -33,11 +32,6 @@ impl ForserFile {
 }
 
 /* ============================= */
-
-// fn lex_source<'a, S: Source + 'a>(source: &'a S) -> Lexer<'a, impl Iterator<Item = char> + 'a> {
-//     let mut source = source.get_chars();
-//     Lexer::new(&mut source)
-// }
 
 pub struct Lexer<'a, S> {
     source: &'a mut S,
@@ -84,7 +78,8 @@ where
             let token = match c {
                 '{' => Token::BraceLeft,
                 '}' => Token::BraceRight,
-                ';' => Token::Semicolon,
+                ',' => Token::Comma,
+                ':' => Token::Colon,
                 'a'..='z' | 'A'..='Z' => {
                     let ident: String = self.consume_identifier();
                     token::to_keyword(&ident).unwrap_or_else(|| Token::Identifier(ident))
@@ -108,11 +103,11 @@ where
     }
 }
 
-pub trait LexedTokenStream {
+pub trait TokenStream {
     fn next_token(&mut self) -> Token;
 }
 
-impl<'a, S> LexedTokenStream for Lexer<'a, S>
+impl<'a, S> TokenStream for Lexer<'a, S>
 where
     S: Source + 'a,
 {

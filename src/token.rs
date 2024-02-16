@@ -1,10 +1,19 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
+    // Keywords
     Struct,
+    
+    // Punctuation
     BraceLeft,
     BraceRight,
-    Semicolon,
+    Comma,
+    Colon,
+
+    // Identifiers 
     Identifier(String),
+
+    // Other
+    Init,
     Eof,
 }
 
