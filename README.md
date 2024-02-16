@@ -1,0 +1,1 @@
+A system for strongly-typed communication between client and server

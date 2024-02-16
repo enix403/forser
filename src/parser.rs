@@ -7,7 +7,7 @@ pub struct Parser<L> {
     lexer: L,
     current: Token,
     next: Token,
-    pub structs: Vec<StructDefinition>,
+    structs: Vec<StructDefinition>,
 }
 
 impl<L> Parser<L>
