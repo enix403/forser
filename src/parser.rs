@@ -9,6 +9,7 @@ pub enum ParseError {
         expected: Option<TokenKind>,
         found: Token,
     },
+    RecursiveType(String),
     UnknownType(String),
 }
 
@@ -46,7 +47,7 @@ where
         &self.current
     }
 
-    fn record_error(&mut self, expected: Option<TokenKind>) {
+    fn syntax_error(&mut self, expected: Option<TokenKind>) {
         self.errors.push(ParseError::UnexpectedToken {
             expected,
             found: self.current.clone(),
@@ -56,7 +57,7 @@ where
     fn consume_expected(&mut self, expected: TokenKind) {
         let token = self.consume();
         if expected != token.kind {
-            self.record_error(Some(expected));
+            self.syntax_error(Some(expected));
         }
     }
 
@@ -67,15 +68,12 @@ where
             TokenKind::Identifier(ref ident) => ident.clone(),
             _ => {
                 // TODO: This is ugly
-                self.record_error(Some(TokenKind::Identifier("".to_string())));
+                self.syntax_error(Some(TokenKind::Identifier("".to_string())));
                 String::new()
             }
         }
     }
 
-    // fn on_udt(&mut self, name: &str) {
-
-    // }
     fn is_valid_udt(&self, name: &str) -> bool {
         return self.structs.contains_key(name);
     }
@@ -105,6 +103,13 @@ where
         }
     }
 
+    fn is_ty_recursive(parent: &str, ty: &TyKind) -> bool {
+        match ty {
+            TyKind::UserDefined(udt) => udt == parent,
+            TyKind::Primitive(..) | TyKind::Array(..) => false,
+        }
+    }
+
     fn parse_struct(&mut self) {
         let struct_name = self.parse_ident();
         self.consume_expected(TokenKind::BraceLeft);
@@ -118,6 +123,12 @@ where
             let field_name = self.parse_ident();
             self.consume_expected(TokenKind::Colon);
             let field_type = self.parse_type();
+
+            if Self::is_ty_recursive(&struct_.name, &field_type) {
+                self.errors
+                    .push(ParseError::RecursiveType(struct_.name.clone()));
+                continue;
+            }
 
             struct_.fields.push(StructField {
                 name: field_name,
@@ -143,7 +154,7 @@ where
             match self.current.kind {
                 TokenKind::Struct => self.parse_struct(),
                 TokenKind::Eof => break,
-                _ => self.record_error(None),
+                _ => self.syntax_error(None),
             }
         }
 

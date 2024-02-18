@@ -1,9 +1,3 @@
-struct Before {}
-
-struct Foo {
-    before: Before,
-    after: After,
-    invalid: Invalid
+struct int {
+    name: int
 }
-
-struct After {}
