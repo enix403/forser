@@ -37,6 +37,9 @@ fn main() {
 
     let mut parser = parser::Parser::new(lex);
     let program = parser.parse().unwrap_or_else(|errors| {
+        // Right now we show a panic message on the first error.
+        // TODO: Perform proper error reporting
+
         // Safety: There must be atleast one error for parsing to fail
         let error = unsafe { errors.get_unchecked(0) };
 

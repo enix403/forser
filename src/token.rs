@@ -14,6 +14,9 @@ pub enum TokenKind {
     // Identifiers 
     Identifier(String),
 
+    // Unknowm
+    Unknowm(char),
+
     // Other
     Init,
     Eof,

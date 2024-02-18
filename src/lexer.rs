@@ -127,8 +127,8 @@ where
                 'a'..='z' | 'A'..='Z' => {
                     let ident: String = self.consume_identifier();
                     token::to_keyword(&ident).unwrap_or_else(|| TokenKind::Identifier(ident))
-                }
-                x => panic!("Invalid character: {}", x),
+                },
+                x => TokenKind::Unknowm(x),
             };
 
             return self.emit_token(token_kind);
