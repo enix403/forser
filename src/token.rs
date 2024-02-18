@@ -22,9 +22,22 @@ pub enum TokenKind {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    pub position: i64,
+    pub pos_start: i64,
+    pub pos_end: i64,
     pub column: i64,
     pub line: i64,
+}
+
+impl Token {
+    pub fn init() -> Self {
+        Self {
+            kind: TokenKind::Init,
+            pos_start: 0,
+            pos_end: 0,
+            column: 0,
+            line: 1
+        }
+    }
 }
 
 pub fn to_keyword(ident: &str) -> Option<TokenKind> {

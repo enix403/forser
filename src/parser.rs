@@ -22,12 +22,7 @@ where
 {
     pub fn new(mut lexer: L) -> Self {
         Self {
-            current: Token {
-                kind: TokenKind::Init,
-                position: 0,
-                column: 0,
-                line: 1,
-            },
+            current: Token::init(),
             next: lexer.next_token(),
             lexer,
             mode: Mode::Normal,
@@ -40,7 +35,6 @@ where
         &self.current
     }
 
-
     fn consume_expected(&mut self, expected: TokenKind) {
         let token = self.consume();
         if expected != token.kind {
@@ -52,7 +46,7 @@ where
         let token = self.consume();
         match token.kind {
             TokenKind::Identifier(ref ident) => ident.as_str(),
-            _ => panic!("Expected identifier"),
+            _ => panic!("Expected identifier, found {:?}", token),
         }
     }
 

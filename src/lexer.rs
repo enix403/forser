@@ -39,6 +39,7 @@ pub struct Lexer<'a, S> {
     source: &'a mut S,
     current: Option<char>,
     next: Option<char>,
+    last_pos: i64,
     position: i64, // Position of next character
     column: i64,
     line: i64,
@@ -53,6 +54,7 @@ where
             current: None,
             next: source.next_char(),
             source,
+            last_pos: 1,
             position: 0,
             column: 0,
             line: 1,
@@ -85,20 +87,25 @@ where
         self.next.clone()
     }
 
-    fn create_token(&self, kind: TokenKind) -> Token {
-        Token {
+    fn emit_token(&mut self, kind: TokenKind) -> Token {
+        let tok = Token {
             kind,
-            position: self.position,
+            pos_start: self.last_pos,
+            pos_end: self.position,
             column: self.column,
             line: self.line
-        }
+        };
+
+        self.last_pos = self.position;
+
+        tok
     }
 
     pub fn next_token(&mut self) -> Token {
         loop {
             let c = match self.consume() {
                 Some(x) => x,
-                None => return self.create_token(TokenKind::Eof),
+                None => return self.emit_token(TokenKind::Eof),
             };
 
             if c == ' ' || c == '\n' {
@@ -124,7 +131,7 @@ where
                 x => panic!("Invalid character: {}", x),
             };
 
-            return self.create_token(token_kind);
+            return self.emit_token(token_kind);
         }
     }
 
