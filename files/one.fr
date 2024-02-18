@@ -1,5 +1,9 @@
+struct Before {}
+
 struct Foo {
-    value: int,
-    name: [[string]],
-    hehe: bool,
+    before: Before,
+    after: After,
+    invalid: Invalid
 }
+
+struct After {}

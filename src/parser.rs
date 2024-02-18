@@ -1,7 +1,7 @@
 use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
 use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
@@ -9,15 +9,21 @@ pub enum ParseError {
         expected: Option<TokenKind>,
         found: Token,
     },
+    UnknownType(String),
 }
 
 pub struct Parser<L> {
     lexer: L,
     current: Token,
     next: Token,
-    is_error: bool,
     errors: Vec<ParseError>,
+
+    // Items
     structs: HashMap<String, StructDefinition>,
+
+    // Validation
+    /// Set of user defined types yet to be found
+    pending_types: HashSet<String>,
 }
 
 impl<L> Parser<L>
@@ -29,9 +35,9 @@ where
             current: Token::init(),
             next: lexer.next_token(),
             lexer,
-            is_error: false,
             errors: vec![],
             structs: HashMap::new(),
+            pending_types: HashSet::new(),
         }
     }
 
@@ -41,7 +47,6 @@ where
     }
 
     fn record_error(&mut self, expected: Option<TokenKind>) {
-        self.is_error = true;
         self.errors.push(ParseError::UnexpectedToken {
             expected,
             found: self.current.clone(),
@@ -61,10 +66,18 @@ where
         match token.kind {
             TokenKind::Identifier(ref ident) => ident.clone(),
             _ => {
+                // TODO: This is ugly
                 self.record_error(Some(TokenKind::Identifier("".to_string())));
                 String::new()
             }
         }
+    }
+
+    // fn on_udt(&mut self, name: &str) {
+
+    // }
+    fn is_valid_udt(&self, name: &str) -> bool {
+        return self.structs.contains_key(name);
     }
 
     fn parse_type(&mut self) -> TyKind {
@@ -79,7 +92,15 @@ where
             match name.as_str() {
                 "string" => TyKind::Primitive(PrimitiveType::String),
                 "int" => TyKind::Primitive(PrimitiveType::Int),
-                _ => TyKind::UserDefined(name),
+                _ => {
+                    // If the referenced type is not yet defined, then add it to
+                    // pending_types to be checked later
+                    if !self.is_valid_udt(&name) {
+                        self.pending_types.insert(name.clone());
+                    }
+
+                    TyKind::UserDefined(name)
+                }
             }
         }
     }
@@ -105,15 +126,14 @@ where
 
             if matches!(self.next.kind, TokenKind::Comma) {
                 self.consume();
-                continue;
-            }
-            else {
+            } else {
                 break;
             }
         }
 
         self.consume_expected(TokenKind::BraceRight);
 
+        self.pending_types.remove(&struct_.name);
         self.structs.insert(struct_.name.clone(), struct_);
     }
 
@@ -127,7 +147,13 @@ where
             }
         }
 
-        if self.is_error {
+        self.errors.extend(
+            self.pending_types
+                .into_iter()
+                .map(|ty| ParseError::UnknownType(ty)),
+        );
+
+        if self.errors.len() > 0 {
             Err(self.errors)
         } else {
             Ok(Program {
