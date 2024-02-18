@@ -3,16 +3,19 @@ use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
 use std::collections::HashMap;
 
-enum Mode {
-    Normal,
-    Error
+enum ErrorMode {
+    None,
+    UnexpectedToken {
+        expected: Option<TokenKind>,
+        found: Token,
+    },
 }
 
 pub struct Parser<L> {
     lexer: L,
     current: Token,
     next: Token,
-    mode: Mode,
+    mode: ErrorMode,
     structs: HashMap<String, StructDefinition>,
 }
 
@@ -25,7 +28,7 @@ where
             current: Token::init(),
             next: lexer.next_token(),
             lexer,
-            mode: Mode::Normal,
+            mode: ErrorMode::None,
             structs: HashMap::new(),
         }
     }
@@ -35,18 +38,34 @@ where
         &self.current
     }
 
-    fn consume_expected(&mut self, expected: TokenKind) {
-        let token = self.consume();
-        if expected != token.kind {
-            panic!("Expected token {:?}, found {:?}", expected, token);
+    fn record_error(&mut self, expected: Option<TokenKind>) {
+        match self.mode {
+            ErrorMode::None => {
+                self.mode = ErrorMode::UnexpectedToken {
+                    expected,
+                    found: self.current.clone(),
+                };
+            }
+            _ => (),
         }
     }
 
-    fn parse_ident(&mut self) -> &'_ str {
+    fn consume_expected(&mut self, expected: TokenKind) {
         let token = self.consume();
+        if expected != token.kind {
+            self.record_error(Some(expected));
+        }
+    }
+
+    fn parse_ident(&mut self) -> String {
+        let token = self.consume();
+
         match token.kind {
-            TokenKind::Identifier(ref ident) => ident.as_str(),
-            _ => panic!("Expected identifier, found {:?}", token),
+            TokenKind::Identifier(ref ident) => ident.clone(),
+            _ => {
+                self.record_error(Some(TokenKind::Identifier("".to_string())));
+                String::new()
+            }
         }
     }
 
@@ -59,16 +78,16 @@ where
         } else {
             let name = self.parse_ident();
 
-            match name {
+            match name.as_str() {
                 "string" => TyKind::Primitive(PrimitiveType::String),
                 "int" => TyKind::Primitive(PrimitiveType::Int),
-                _ => TyKind::UserDefined(name.into()),
+                _ => TyKind::UserDefined(name),
             }
         }
     }
 
     fn parse_struct(&mut self) {
-        let struct_name = self.parse_ident().to_string();
+        let struct_name = self.parse_ident();
         self.consume_expected(TokenKind::BraceLeft);
 
         let mut struct_ = StructDefinition {
@@ -77,7 +96,7 @@ where
         };
 
         while !(matches!(self.next.kind, TokenKind::BraceRight)) {
-            let field_name = self.parse_ident().to_string();
+            let field_name = self.parse_ident();
             self.consume_expected(TokenKind::Colon);
             let field_type = self.parse_type();
 
@@ -104,6 +123,20 @@ where
                 TokenKind::Struct => self.parse_struct(),
                 TokenKind::Eof => break,
                 _ => (),
+            }
+
+            match self.mode {
+                ErrorMode::None => (),
+                ErrorMode::UnexpectedToken {
+                    ref expected,
+                    ref found,
+                } => {
+                    if let Some(expected) = expected {
+                        panic!("Expected token {:?}, found {:?}", expected, found);
+                    } else {
+                        panic!("Unexpected token {:?}", found);
+                    }
+                }
             }
         }
 
