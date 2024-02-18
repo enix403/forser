@@ -3,10 +3,16 @@ use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
 use std::collections::HashMap;
 
+enum Mode {
+    Normal,
+    Error
+}
+
 pub struct Parser<L> {
     lexer: L,
     current: Token,
     next: Token,
+    mode: Mode,
     structs: HashMap<String, StructDefinition>,
 }
 
@@ -24,6 +30,7 @@ where
             },
             next: lexer.next_token(),
             lexer,
+            mode: Mode::Normal,
             structs: HashMap::new(),
         }
     }
@@ -33,7 +40,8 @@ where
         &self.current
     }
 
-    fn expect(&mut self, expected: TokenKind) {
+
+    fn consume_expected(&mut self, expected: TokenKind) {
         let token = self.consume();
         if expected != token.kind {
             panic!("Expected token {:?}, found {:?}", expected, token);
@@ -52,7 +60,7 @@ where
         if self.next.kind == TokenKind::SquareLeft {
             self.consume();
             let ty = TyKind::Array(Box::new(self.parse_type()));
-            self.expect(TokenKind::SquareRight);
+            self.consume_expected(TokenKind::SquareRight);
             ty
         } else {
             let name = self.parse_ident();
@@ -67,7 +75,7 @@ where
 
     fn parse_struct(&mut self) {
         let struct_name = self.parse_ident().to_string();
-        self.expect(TokenKind::BraceLeft);
+        self.consume_expected(TokenKind::BraceLeft);
 
         let mut struct_ = StructDefinition {
             name: struct_name,
@@ -76,7 +84,7 @@ where
 
         while !(matches!(self.next.kind, TokenKind::BraceRight)) {
             let field_name = self.parse_ident().to_string();
-            self.expect(TokenKind::Colon);
+            self.consume_expected(TokenKind::Colon);
             let field_type = self.parse_type();
 
             struct_.fields.push(StructField {
@@ -86,20 +94,17 @@ where
 
             if matches!(self.next.kind, TokenKind::Comma) {
                 self.consume();
-            } else if matches!(self.next.kind, TokenKind::BraceRight) {
-                // do noting
-            } else {
-                panic!("Invalid syntax");
+                continue;
             }
+
+            self.consume_expected(TokenKind::BraceRight);
+            break;
         }
 
-        self.expect(TokenKind::BraceRight);
-
-        // self.structs.push(struct_def);
         self.structs.insert(struct_.name.clone(), struct_);
     }
 
-    pub fn parse(mut self) -> Program {
+    pub fn parse(mut self) -> Result<Program, Token> {
         loop {
             match self.consume().kind {
                 TokenKind::Struct => self.parse_struct(),
@@ -108,8 +113,8 @@ where
             }
         }
 
-        Program {
+        Ok(Program {
             structs: self.structs.into_values().collect(),
-        }
+        })
     }
 }

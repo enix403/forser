@@ -36,7 +36,7 @@ fn main() {
     let mut lex = Lexer::new(&mut source);
 
     let mut parser = parser::Parser::new(lex);
-    let program = parser.parse();
+    let program = parser.parse().unwrap();
 
     {
         let mut gen: Box<dyn Language> = Box::new(codegen::TypeScriptGenerator::new());

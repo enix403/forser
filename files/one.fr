@@ -1,12 +1,12 @@
 struct LoginRequest {
     username: string,
     password: string,
-    keep_logged_in: bool 
+    keep_logged_in: bool,
 }
 
 struct Role {
     id: string,
-    permissions: [string]  
+    permissions: [string]
 }
 
 struct User {
@@ -16,7 +16,7 @@ struct User {
     username: string,
     last_logged_in: int,
     roles: [Role],
-    friends: [User]
+    friends: [User],
 }
 
 struct LoginReply {
