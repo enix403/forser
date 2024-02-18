@@ -54,8 +54,14 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
             },
             TyKind::UserDefined(ref name) => write!(dest, "{}", name)?,
             TyKind::Array(ref ty) => {
+                write!(dest, "Array<")?;
                 Self::write_type(dest, ty)?;
-                write!(dest, "[]")?
+                write!(dest, ">")?
+            },
+            TyKind::Nullable(ref ty) => {
+                write!(dest, "(")?;
+                Self::write_type(dest, ty)?;
+                write!(dest, ") | null")?
             }
         }
 

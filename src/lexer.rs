@@ -124,6 +124,7 @@ where
                 ']' => TokenKind::SquareRight,
                 ',' => TokenKind::Comma,
                 ':' => TokenKind::Colon,
+                '?' => TokenKind::QuestionMark,
                 'a'..='z' | 'A'..='Z' => {
                     let ident: String = self.consume_identifier();
                     token::to_keyword(&ident).unwrap_or_else(|| TokenKind::Identifier(ident))

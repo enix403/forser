@@ -1,4 +1,11 @@
 struct Menu {
     label: string,
+    level: int?,
     children: [Menu]
+}
+
+struct nulltime {
+    time: int?,
+    is_future: int,
+    menu: Menu
 }

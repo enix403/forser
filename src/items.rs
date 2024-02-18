@@ -12,6 +12,9 @@ pub enum TyKind {
     // User Defined
     UserDefined(String),
 
+    // The nullable type T?
+    Nullable(Box<TyKind>),
+
     // The array type [T]
     Array(Box<TyKind>)
 }

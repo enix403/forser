@@ -34,6 +34,7 @@ mod guards {
     pub fn ty_recursive(parent: &str, ty: &TyKind) -> bool {
         match ty {
             TyKind::UserDefined(udt) => parent == udt,
+            TyKind::Nullable(ty) => ty_recursive(parent, ty),
             TyKind::Primitive(..) | TyKind::Array(..) => false,
         }
     }
@@ -98,7 +99,7 @@ where
     }
 
     fn parse_type(&mut self) -> TyKind {
-        if self.next.kind == TokenKind::SquareLeft {
+        let mut ty = if self.next.kind == TokenKind::SquareLeft {
             self.consume();
             let ty = TyKind::Array(Box::new(self.parse_type()));
             self.consume_expected(TokenKind::SquareRight);
@@ -119,7 +120,16 @@ where
                     TyKind::UserDefined(name)
                 }
             }
+        };
+
+        if self.next.kind == TokenKind::QuestionMark {
+            self.consume();
+            TyKind::Nullable(Box::new(ty))    
         }
+        else {
+            ty
+        }
+
     }
 
     fn parse_struct(&mut self) {

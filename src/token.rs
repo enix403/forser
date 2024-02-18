@@ -10,6 +10,7 @@ pub enum TokenKind {
     SquareRight,
     Comma,
     Colon,
+    QuestionMark,
 
     // Identifiers 
     Identifier(String),
