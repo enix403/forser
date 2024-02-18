@@ -27,7 +27,9 @@ impl ForserFile {
     }
 
     pub fn source(&self) -> impl Source + '_ {
-        FileSource { chars: self.contents.chars() }
+        FileSource {
+            chars: self.contents.chars(),
+        }
     }
 }
 
@@ -37,7 +39,9 @@ pub struct Lexer<'a, S> {
     source: &'a mut S,
     current: Option<char>,
     next: Option<char>,
-    position: usize, // Position of next character
+    position: i64, // Position of next character
+    column: i64,
+    line: i64,
 }
 
 impl<'a, S> Lexer<'a, S>
@@ -50,14 +54,31 @@ where
             next: source.next_char(),
             source,
             position: 0,
+            column: 0,
+            line: 1,
         }
     }
 
     pub fn consume(&mut self) -> Option<char> {
         self.current = self.next.clone();
         self.next = self.source.next_char();
-        self.position += 1;
-        self.current.clone()
+
+        if let Some(x) = self.current {
+            self.position += 1;
+
+            // TODO: Convert all \r\n sequences to \n
+
+            if x == '\n' {
+                self.column = 1;
+                self.line += 1;
+            } else {
+                self.column += 1;
+            }
+
+            Some(x)
+        } else {
+            None
+        }
     }
 
     pub fn peek(&self) -> Option<char> {
@@ -72,6 +93,11 @@ where
             };
 
             if c == ' ' || c == '\n' {
+                continue;
+            }
+
+            if c == '/' && self.next.is_some_and(|c| c == '/') {
+                self.consume_line_comment();
                 continue;
             }
 
@@ -90,6 +116,15 @@ where
             };
 
             return token;
+        }
+    }
+
+    fn consume_line_comment(&mut self) {
+        loop {
+            match self.consume() {
+                Some('\n') => break,
+                _ => ()
+            }
         }
     }
 
