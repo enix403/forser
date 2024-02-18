@@ -1,3 +1,4 @@
-struct int {
-    name: int
+struct Menu {
+    label: string,
+    children: [Menu]
 }

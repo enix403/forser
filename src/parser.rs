@@ -11,6 +11,7 @@ pub enum ParseError {
     },
     RecursiveType(String),
     UnknownType(String),
+    InvalidUdt(String),
 }
 
 pub struct Parser<L> {
@@ -25,6 +26,24 @@ pub struct Parser<L> {
     // Validation
     /// Set of user defined types yet to be found
     pending_types: HashSet<String>,
+}
+
+mod guards {
+    use super::*;
+
+    pub fn ty_recursive(parent: &str, ty: &TyKind) -> bool {
+        match ty {
+            TyKind::UserDefined(udt) => parent == udt,
+            TyKind::Primitive(..) | TyKind::Array(..) => false,
+        }
+    }
+
+    pub fn udt_allowed(name: &str) -> bool {
+        match name {
+            "string" | "int" | "struct" => false,
+            _ => true,
+        }
+    }
 }
 
 impl<L> Parser<L>
@@ -103,15 +122,14 @@ where
         }
     }
 
-    fn is_ty_recursive(parent: &str, ty: &TyKind) -> bool {
-        match ty {
-            TyKind::UserDefined(udt) => udt == parent,
-            TyKind::Primitive(..) | TyKind::Array(..) => false,
-        }
-    }
-
     fn parse_struct(&mut self) {
         let struct_name = self.parse_ident();
+
+        if !guards::udt_allowed(&struct_name) {
+            self.errors
+                .push(ParseError::InvalidUdt(struct_name.clone()));
+        }
+
         self.consume_expected(TokenKind::BraceLeft);
 
         let mut struct_ = StructDefinition {
@@ -124,7 +142,7 @@ where
             self.consume_expected(TokenKind::Colon);
             let field_type = self.parse_type();
 
-            if Self::is_ty_recursive(&struct_.name, &field_type) {
+            if guards::ty_recursive(&struct_.name, &field_type) {
                 self.errors
                     .push(ParseError::RecursiveType(struct_.name.clone()));
                 continue;
