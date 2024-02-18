@@ -1,13 +1,13 @@
 use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
 use crate::lexer::TokenStream;
 use crate::token::Token;
-use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 pub struct Parser<L> {
     lexer: L,
     current: Token,
     next: Token,
-    structs: Vec<StructDefinition>,
+    structs: HashMap<String, StructDefinition>,
 }
 
 impl<L> Parser<L>
@@ -19,7 +19,7 @@ where
             current: Token::Init,
             next: lexer.next_token(),
             lexer,
-            structs: vec![],
+            structs: HashMap::new(),
         }
     }
 
@@ -63,7 +63,7 @@ where
         let struct_name = self.parse_ident().to_string();
         self.expect(Token::BraceLeft);
 
-        let mut struct_def = StructDefinition {
+        let mut struct_ = StructDefinition {
             name: struct_name,
             fields: vec![],
         };
@@ -73,7 +73,7 @@ where
             self.expect(Token::Colon);
             let field_type = self.parse_type();
 
-            struct_def.fields.push(StructField {
+            struct_.fields.push(StructField {
                 name: field_name,
                 datatype: field_type,
             });
@@ -89,7 +89,8 @@ where
 
         self.expect(Token::BraceRight);
 
-        self.structs.push(struct_def);
+        // self.structs.push(struct_def);
+        self.structs.insert(struct_.name.clone(), struct_);
     }
 
     pub fn parse(mut self) -> Program {
@@ -102,7 +103,7 @@ where
         }
 
         Program {
-            structs: self.structs,
+            structs: self.structs.into_values().collect(),
         }
     }
 }
