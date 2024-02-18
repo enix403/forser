@@ -36,7 +36,21 @@ fn main() {
     let mut lex = Lexer::new(&mut source);
 
     let mut parser = parser::Parser::new(lex);
-    let program = parser.parse().unwrap();
+    let program = parser.parse().unwrap_or_else(|errors| {
+        // Safety: There must be atleast one error for parsing to fail
+        let error = unsafe { errors.get_unchecked(0) };
+
+        match error {
+            parser::ParseError::UnexpectedToken { expected, found } => {
+                if let Some(expected) = expected {
+                    panic!("Expected token {:?}, found {:?}", expected, found);
+                }
+                else {
+                    panic!("Unexpected token {:?}", found);
+                };
+            }
+        }
+    });
 
     {
         let mut gen: Box<dyn Language> = Box::new(codegen::TypeScriptGenerator::new());

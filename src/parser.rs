@@ -3,8 +3,8 @@ use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
 use std::collections::HashMap;
 
-enum ErrorMode {
-    None,
+#[derive(Debug, Clone)]
+pub enum ParseError {
     UnexpectedToken {
         expected: Option<TokenKind>,
         found: Token,
@@ -15,7 +15,8 @@ pub struct Parser<L> {
     lexer: L,
     current: Token,
     next: Token,
-    mode: ErrorMode,
+    is_error: bool,
+    errors: Vec<ParseError>,
     structs: HashMap<String, StructDefinition>,
 }
 
@@ -28,7 +29,8 @@ where
             current: Token::init(),
             next: lexer.next_token(),
             lexer,
-            mode: ErrorMode::None,
+            is_error: false,
+            errors: vec![],
             structs: HashMap::new(),
         }
     }
@@ -39,15 +41,11 @@ where
     }
 
     fn record_error(&mut self, expected: Option<TokenKind>) {
-        match self.mode {
-            ErrorMode::None => {
-                self.mode = ErrorMode::UnexpectedToken {
-                    expected,
-                    found: self.current.clone(),
-                };
-            }
-            _ => (),
-        }
+        self.is_error = true;
+        self.errors.push(ParseError::UnexpectedToken {
+            expected,
+            found: self.current.clone(),
+        });
     }
 
     fn consume_expected(&mut self, expected: TokenKind) {
@@ -117,31 +115,21 @@ where
         self.structs.insert(struct_.name.clone(), struct_);
     }
 
-    pub fn parse(mut self) -> Result<Program, Token> {
+    pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {
         loop {
             match self.consume().kind {
                 TokenKind::Struct => self.parse_struct(),
                 TokenKind::Eof => break,
                 _ => (),
             }
-
-            match self.mode {
-                ErrorMode::None => (),
-                ErrorMode::UnexpectedToken {
-                    ref expected,
-                    ref found,
-                } => {
-                    if let Some(expected) = expected {
-                        panic!("Expected token {:?}, found {:?}", expected, found);
-                    } else {
-                        panic!("Unexpected token {:?}", found);
-                    }
-                }
-            }
         }
 
-        Ok(Program {
-            structs: self.structs.into_values().collect(),
-        })
+        if self.is_error {
+            Err(self.errors)
+        } else {
+            Ok(Program {
+                structs: self.structs.into_values().collect(),
+            })
+        }
     }
 }
