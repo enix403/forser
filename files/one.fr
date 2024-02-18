@@ -1,26 +1,5 @@
-struct LoginRequest {
-    username: string,
-    password: string,
-    keep_logged_in: bool,
-}
-
-struct Role {
-    id: string,
-    permissions: [string]
-}
-
-struct User {
-    // This is a comment
-    id: int,
-    name: string, // Hehe what are you doing
-    username: string,
-    last_logged_in: int,
-    roles: [Role],
-    friends: [User],
-}
-
-struct LoginReply {
-    success: bool,
-    fail_reason: string,
-    user: User
+struct Foo {
+    value: int,
+    name: [[string]],
+    hehe: bool,
 }

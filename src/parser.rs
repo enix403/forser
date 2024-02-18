@@ -107,20 +107,23 @@ where
                 self.consume();
                 continue;
             }
-
-            self.consume_expected(TokenKind::BraceRight);
-            break;
+            else {
+                break;
+            }
         }
+
+        self.consume_expected(TokenKind::BraceRight);
 
         self.structs.insert(struct_.name.clone(), struct_);
     }
 
     pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {
         loop {
-            match self.consume().kind {
+            self.consume();
+            match self.current.kind {
                 TokenKind::Struct => self.parse_struct(),
                 TokenKind::Eof => break,
-                _ => (),
+                _ => self.record_error(None),
             }
         }
 
