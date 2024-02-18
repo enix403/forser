@@ -13,7 +13,7 @@ struct User {
     // This is a comment
     id: int,
     name: string, // Hehe what are you doing
-    usern//ame: string,
+    username: string,
     last_logged_in: int,
     roles: [Role],
     friends: [User]

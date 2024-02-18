@@ -1,6 +1,6 @@
 use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
 use crate::lexer::TokenStream;
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 use std::collections::HashMap;
 
 pub struct Parser<L> {
@@ -16,7 +16,12 @@ where
 {
     pub fn new(mut lexer: L) -> Self {
         Self {
-            current: Token::Init,
+            current: Token {
+                kind: TokenKind::Init,
+                position: 0,
+                column: 0,
+                line: 1,
+            },
             next: lexer.next_token(),
             lexer,
             structs: HashMap::new(),
@@ -28,25 +33,26 @@ where
         &self.current
     }
 
-    fn expect(&mut self, expected: Token) {
+    fn expect(&mut self, expected: TokenKind) {
         let token = self.consume();
-        if expected != *token {
+        if expected != token.kind {
             panic!("Expected token {:?}, found {:?}", expected, token);
         }
     }
 
     fn parse_ident(&mut self) -> &'_ str {
-        match self.consume() {
-            Token::Identifier(ident) => ident.as_str(),
+        let token = self.consume();
+        match token.kind {
+            TokenKind::Identifier(ref ident) => ident.as_str(),
             _ => panic!("Expected identifier"),
         }
     }
 
     fn parse_type(&mut self) -> TyKind {
-        if self.next == Token::SquareLeft {
+        if self.next.kind == TokenKind::SquareLeft {
             self.consume();
             let ty = TyKind::Array(Box::new(self.parse_type()));
-            self.expect(Token::SquareRight);
+            self.expect(TokenKind::SquareRight);
             ty
         } else {
             let name = self.parse_ident();
@@ -61,16 +67,16 @@ where
 
     fn parse_struct(&mut self) {
         let struct_name = self.parse_ident().to_string();
-        self.expect(Token::BraceLeft);
+        self.expect(TokenKind::BraceLeft);
 
         let mut struct_ = StructDefinition {
             name: struct_name,
             fields: vec![],
         };
 
-        while !(matches!(self.next, Token::BraceRight)) {
+        while !(matches!(self.next.kind, TokenKind::BraceRight)) {
             let field_name = self.parse_ident().to_string();
-            self.expect(Token::Colon);
+            self.expect(TokenKind::Colon);
             let field_type = self.parse_type();
 
             struct_.fields.push(StructField {
@@ -78,16 +84,16 @@ where
                 datatype: field_type,
             });
 
-            if matches!(self.next, Token::Comma) {
+            if matches!(self.next.kind, TokenKind::Comma) {
                 self.consume();
-            } else if matches!(self.next, Token::BraceRight) {
+            } else if matches!(self.next.kind, TokenKind::BraceRight) {
                 // do noting
             } else {
                 panic!("Invalid syntax");
             }
         }
 
-        self.expect(Token::BraceRight);
+        self.expect(TokenKind::BraceRight);
 
         // self.structs.push(struct_def);
         self.structs.insert(struct_.name.clone(), struct_);
@@ -95,9 +101,9 @@ where
 
     pub fn parse(mut self) -> Program {
         loop {
-            match self.consume() {
-                Token::Struct => self.parse_struct(),
-                Token::Eof => break,
+            match self.consume().kind {
+                TokenKind::Struct => self.parse_struct(),
+                TokenKind::Eof => break,
                 _ => (),
             }
         }

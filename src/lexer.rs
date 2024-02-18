@@ -1,4 +1,4 @@
-use crate::token::{self, Token};
+use crate::token::{self, Token, TokenKind};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -59,7 +59,7 @@ where
         }
     }
 
-    pub fn consume(&mut self) -> Option<char> {
+    fn consume(&mut self) -> Option<char> {
         self.current = self.next.clone();
         self.next = self.source.next_char();
 
@@ -81,15 +81,24 @@ where
         }
     }
 
-    pub fn peek(&self) -> Option<char> {
+    fn peek(&self) -> Option<char> {
         self.next.clone()
+    }
+
+    fn create_token(&self, kind: TokenKind) -> Token {
+        Token {
+            kind,
+            position: self.position,
+            column: self.column,
+            line: self.line
+        }
     }
 
     pub fn next_token(&mut self) -> Token {
         loop {
             let c = match self.consume() {
                 Some(x) => x,
-                None => return Token::Eof,
+                None => return self.create_token(TokenKind::Eof),
             };
 
             if c == ' ' || c == '\n' {
@@ -101,21 +110,21 @@ where
                 continue;
             }
 
-            let token = match c {
-                '{' => Token::BraceLeft,
-                '}' => Token::BraceRight,
-                '[' => Token::SquareLeft,
-                ']' => Token::SquareRight,
-                ',' => Token::Comma,
-                ':' => Token::Colon,
+            let token_kind = match c {
+                '{' => TokenKind::BraceLeft,
+                '}' => TokenKind::BraceRight,
+                '[' => TokenKind::SquareLeft,
+                ']' => TokenKind::SquareRight,
+                ',' => TokenKind::Comma,
+                ':' => TokenKind::Colon,
                 'a'..='z' | 'A'..='Z' => {
                     let ident: String = self.consume_identifier();
-                    token::to_keyword(&ident).unwrap_or_else(|| Token::Identifier(ident))
+                    token::to_keyword(&ident).unwrap_or_else(|| TokenKind::Identifier(ident))
                 }
                 x => panic!("Invalid character: {}", x),
             };
 
-            return token;
+            return self.create_token(token_kind);
         }
     }
 

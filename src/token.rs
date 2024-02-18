@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Token {
+pub enum TokenKind {
     // Keywords
     Struct,
     
@@ -19,9 +19,17 @@ pub enum Token {
     Eof,
 }
 
-pub fn to_keyword(ident: &str) -> Option<Token> {
+#[derive(Debug, Clone)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub position: i64,
+    pub column: i64,
+    pub line: i64,
+}
+
+pub fn to_keyword(ident: &str) -> Option<TokenKind> {
     match ident {
-        "struct" => Some(Token::Struct),
+        "struct" => Some(TokenKind::Struct),
         _ => None,
     }
 }
