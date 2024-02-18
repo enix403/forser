@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::write;
 
-use crate::items::{DataType, PrimitiveType, Program};
+use crate::items::{PrimitiveType, Program, TyKind};
 
 pub trait Language {
     fn lang_id(&self) -> &'static str;
@@ -46,28 +46,38 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
         Self { dest }
     }
 
-    fn type_str<'a>(dt: &'a DataType) -> &'a str {
-        match dt {
-            DataType::Primitive(prim) => match prim {
-                PrimitiveType::String => "string",
-                PrimitiveType::Int => "number",
+    fn write_type(dest: &mut W, ty: &TyKind) -> io::Result<()> {
+        match ty {
+            TyKind::Primitive(prim) => match prim {
+                PrimitiveType::String => write!(dest, "string")?,
+                PrimitiveType::Int => write!(dest, "number")?,
             },
-            DataType::UserDefined(ref name) => name.as_str(),
+            TyKind::UserDefined(ref name) => write!(dest, "{}", name)?,
+            TyKind::Array(ref ty) => {
+                Self::write_type(dest, ty)?;
+                write!(dest, "[]")?
+            }
         }
+
+        Ok(())
     }
 
     fn generate(&mut self, program: &Program) -> io::Result<()> {
+        const INDENT: &'static str = "    "; 
+
         for struct_ in program.structs.iter() {
             writeln!(&mut self.dest, "type {} = {{", struct_.name.as_str())?;
 
             for (index, field) in struct_.fields.iter().enumerate() {
+                // The comma and new line
                 if index != 0 {
                     write!(&mut self.dest, ",\n")?;
                 }
-
-                let ty = Self::type_str(&field.datatype);
-
-                write!(&mut self.dest, "    {}: {}", field.name, ty)?;
+                // indent
+                write!(&mut self.dest, "{}", INDENT)?;
+                // name: datatype
+                write!(&mut self.dest, "{}: ", field.name)?;
+                Self::write_type(&mut self.dest, &field.datatype)?;
             }
 
             writeln!(&mut self.dest, "\n}};\n")?;

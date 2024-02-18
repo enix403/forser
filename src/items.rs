@@ -5,14 +5,20 @@ pub enum PrimitiveType {
 }
 
 #[derive(Debug, Clone)]
-pub enum DataType {
+pub enum TyKind {
+    // Built-int, primtive types 
     Primitive(PrimitiveType),
-    UserDefined(String), // TODO: use interning
+
+    // User Defined
+    UserDefined(String),
+
+    // The array type [T]
+    Array(Box<TyKind>)
 }
 
 #[derive(Debug, Clone)]
 pub struct StructField {
-    pub datatype: DataType,
+    pub datatype: TyKind,
     pub name: String,
 }
 
@@ -24,7 +30,5 @@ pub struct StructDefinition {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub structs: Vec<StructDefinition>
+    pub structs: Vec<StructDefinition>,
 }
-
-/* ========================= */

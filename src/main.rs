@@ -39,7 +39,7 @@ fn main() {
     let program = parser.parse();
 
     {
-        let mut gen = Box::new(codegen::TypeScriptGenerator::new());
+        let mut gen: Box<dyn Language> = Box::new(codegen::TypeScriptGenerator::new());
         let gen_outdir = args
             .out_dir
             .unwrap_or_else(|| "build".into())

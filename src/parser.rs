@@ -1,4 +1,4 @@
-use crate::items::{DataType, PrimitiveType, Program, StructDefinition, StructField};
+use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
 use crate::lexer::TokenStream;
 use crate::token::Token;
 use std::cell::{Cell, RefCell};
@@ -35,25 +35,32 @@ where
         }
     }
 
-    fn parse_ident(&mut self) -> String {
+    fn parse_ident(&mut self) -> &'_ str {
         match self.consume() {
-            Token::Identifier(ident) => ident.clone(),
+            Token::Identifier(ident) => ident.as_str(),
             _ => panic!("Expected identifier"),
         }
     }
 
-    fn parse_type(&mut self) -> DataType {
-        let name = self.parse_ident();
+    fn parse_type(&mut self) -> TyKind {
+        if self.next == Token::SquareLeft {
+            self.consume();
+            let ty = TyKind::Array(Box::new(self.parse_type()));
+            self.expect(Token::SquareRight);
+            ty
+        } else {
+            let name = self.parse_ident();
 
-        match name.as_str() {
-            "string" => DataType::Primitive(PrimitiveType::String),
-            "int" => DataType::Primitive(PrimitiveType::Int),
-            _ => DataType::UserDefined(name),
+            match name {
+                "string" => TyKind::Primitive(PrimitiveType::String),
+                "int" => TyKind::Primitive(PrimitiveType::Int),
+                _ => TyKind::UserDefined(name.into()),
+            }
         }
     }
 
     fn parse_struct(&mut self) {
-        let struct_name = self.parse_ident();
+        let struct_name = self.parse_ident().to_string();
         self.expect(Token::BraceLeft);
 
         let mut struct_def = StructDefinition {
@@ -62,7 +69,7 @@ where
         };
 
         while !(matches!(self.next, Token::BraceRight)) {
-            let field_name = self.parse_ident();
+            let field_name = self.parse_ident().to_string();
             self.expect(Token::Colon);
             let field_type = self.parse_type();
 
@@ -95,7 +102,7 @@ where
         }
 
         Program {
-            structs: self.structs
+            structs: self.structs,
         }
     }
 }

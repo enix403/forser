@@ -78,6 +78,8 @@ where
             let token = match c {
                 '{' => Token::BraceLeft,
                 '}' => Token::BraceRight,
+                '[' => Token::SquareLeft,
+                ']' => Token::SquareRight,
                 ',' => Token::Comma,
                 ':' => Token::Colon,
                 'a'..='z' | 'A'..='Z' => {

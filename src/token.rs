@@ -6,6 +6,8 @@ pub enum Token {
     // Punctuation
     BraceLeft,
     BraceRight,
+    SquareLeft,
+    SquareRight,
     Comma,
     Colon,
 
