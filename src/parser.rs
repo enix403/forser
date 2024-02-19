@@ -50,7 +50,7 @@ mod guards {
         }
     }
 
-    pub fn udt_allowed(name: &str) -> bool {
+    pub fn is_reserved(name: &str) -> bool {
         match name {
             "string" | "int" | "struct" => false,
             _ => true,
@@ -144,7 +144,7 @@ where
     fn parse_struct(&mut self) {
         let struct_name = self.parse_ident();
 
-        if !guards::udt_allowed(&struct_name) {
+        if !guards::is_reserved(&struct_name) {
             self.errors
                 .push(ParseError::InvalidUdt(struct_name.clone()));
         } else if self.is_valid_udt(&struct_name) {
