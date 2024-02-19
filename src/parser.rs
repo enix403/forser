@@ -12,6 +12,7 @@ pub enum ParseError {
     RecursiveType(String),
     UnknownType(String),
     InvalidUdt(String),
+    RedefinedType(String),
 }
 
 pub struct Parser<L> {
@@ -34,8 +35,7 @@ mod guards {
     pub fn ty_recursive(parent: &str, ty: &TyKind) -> bool {
         match ty {
             TyKind::UserDefined(udt) => parent == udt,
-            TyKind::Nullable(ty) => ty_recursive(parent, ty),
-            TyKind::Primitive(..) | TyKind::Array(..) => false,
+            TyKind::Primitive(..) | TyKind::Array(..) | TyKind::Nullable(..) => false,
         }
     }
 
@@ -124,12 +124,10 @@ where
 
         if self.next.kind == TokenKind::QuestionMark {
             self.consume();
-            TyKind::Nullable(Box::new(ty))    
-        }
-        else {
+            TyKind::Nullable(Box::new(ty))
+        } else {
             ty
         }
-
     }
 
     fn parse_struct(&mut self) {
@@ -138,6 +136,9 @@ where
         if !guards::udt_allowed(&struct_name) {
             self.errors
                 .push(ParseError::InvalidUdt(struct_name.clone()));
+        } else if self.is_valid_udt(&struct_name) {
+            self.errors
+                .push(ParseError::RedefinedType(struct_name.clone()));
         }
 
         self.consume_expected(TokenKind::BraceLeft);
