@@ -6,7 +6,7 @@ pub enum PrimitiveType {
 
 #[derive(Debug, Clone)]
 pub enum TyKind {
-    // Built-int, primtive types 
+    // Built-int, primtive types
     Primitive(PrimitiveType),
 
     // User Defined
@@ -16,7 +16,7 @@ pub enum TyKind {
     Nullable(Box<TyKind>),
 
     // The array type [T]
-    Array(Box<TyKind>)
+    Array(Box<TyKind>),
 }
 
 #[derive(Debug, Clone)]

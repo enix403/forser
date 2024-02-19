@@ -57,7 +57,7 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
                 write!(dest, "Array<")?;
                 Self::write_type(dest, ty)?;
                 write!(dest, ">")?
-            },
+            }
             TyKind::Nullable(ref ty) => {
                 write!(dest, "(")?;
                 Self::write_type(dest, ty)?;
@@ -69,7 +69,7 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
     }
 
     fn generate(&mut self, program: &Program) -> io::Result<()> {
-        const INDENT: &'static str = "    "; 
+        const INDENT: &'static str = "    ";
 
         for struct_ in program.structs.iter() {
             writeln!(&mut self.dest, "type {} = {{", struct_.name.as_str())?;

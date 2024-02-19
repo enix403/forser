@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-use clap::{Parser as ClapParser};
+use clap::Parser as ClapParser;
 use std::path::PathBuf;
 
 pub mod codegen;
@@ -15,7 +15,7 @@ use lexer::ForserFile;
 use lexer::Lexer;
 
 use codegen::Language;
-use parser::{Parser, ParseError};
+use parser::{ParseError, Parser};
 
 #[derive(ClapParser, Debug)]
 #[command(version, about, long_about = None)]

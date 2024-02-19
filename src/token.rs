@@ -2,7 +2,7 @@
 pub enum TokenKind {
     // Keywords
     Struct,
-    
+
     // Punctuation
     BraceLeft,
     BraceRight,
@@ -12,7 +12,7 @@ pub enum TokenKind {
     Colon,
     QuestionMark,
 
-    // Identifiers 
+    // Identifiers
     Identifier(String),
 
     // Unknowm
@@ -39,7 +39,7 @@ impl Token {
             pos_start: 0,
             pos_end: 0,
             column: 0,
-            line: 1
+            line: 1,
         }
     }
 }

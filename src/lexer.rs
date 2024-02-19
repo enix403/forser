@@ -93,7 +93,7 @@ where
             pos_start: self.last_pos,
             pos_end: self.position,
             column: self.column,
-            line: self.line
+            line: self.line,
         };
 
         self.last_pos = self.position;
@@ -128,7 +128,7 @@ where
                 'a'..='z' | 'A'..='Z' => {
                     let ident: String = self.consume_identifier();
                     token::to_keyword(&ident).unwrap_or_else(|| TokenKind::Identifier(ident))
-                },
+                }
                 x => TokenKind::Unknowm(x),
             };
 
@@ -140,7 +140,7 @@ where
         loop {
             match self.consume() {
                 Some('\n') => break,
-                _ => ()
+                _ => (),
             }
         }
     }
