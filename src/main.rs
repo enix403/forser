@@ -4,6 +4,7 @@
 
 use clap::Parser as ClapParser;
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 pub mod codegen;
 pub mod items;
@@ -29,7 +30,7 @@ struct Args {
     out_dir: Option<PathBuf>,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args = Args::parse();
 
     let file = ForserFile::new(args.in_file).expect("Failed to open files");
@@ -37,20 +38,26 @@ fn main() {
     let mut lex = Lexer::new(&mut source);
 
     let mut parser = Parser::new(lex);
-    let program = parser.parse().unwrap_or_else(|errors| {
-        println!("{:#?}", errors);
-        panic!("Errors occured. Aborting");
-    });
+    let program = parser
+        .parse()
+        .map_err(|errors| unsafe { errors.get_unchecked(0).clone() });
 
-    {
-        let mut gen: Box<dyn Language> = Box::new(codegen::TypeScriptGenerator::new());
-        let gen_outdir = args
-            .out_dir
-            .unwrap_or_else(|| "build".into())
-            .join(gen.lang_id());
+    match program {
+        Ok(program) => {
+            let mut gen: Box<dyn Language> = Box::new(codegen::TypeScriptGenerator::new());
+            let gen_outdir = args
+                .out_dir
+                .unwrap_or_else(|| "build".into())
+                .join(gen.lang_id());
 
-        std::fs::create_dir_all(&gen_outdir).expect("Failed to create output directory");
+            std::fs::create_dir_all(&gen_outdir).expect("Failed to create output directory");
 
-        gen.generate(&program, &gen_outdir);
+            gen.generate(&program, &gen_outdir);
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("{}", err);
+            ExitCode::FAILURE
+        }
     }
 }

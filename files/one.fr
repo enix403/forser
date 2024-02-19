@@ -2,4 +2,4 @@ struct Foo {
     foo: Foo?
 }
 
-struct Foo {}
+struct Foo2 {

@@ -3,15 +3,26 @@ use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Clone)]
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone)]
 pub enum ParseError {
+    #[error("Expected token {expected:?}, found {found:?}")]
     UnexpectedToken {
         expected: Option<TokenKind>,
         found: Token,
     },
+
+    #[error("Recursive Type \"{0}\" has infinite size")]
     RecursiveType(String),
+
+    #[error("Unknown Type \"{0}\"")]
     UnknownType(String),
+
+    #[error("Type \"{0}\" is not a valid user-defined type")]
     InvalidUdt(String),
+
+    #[error("Type \"{0}\" is already defined")]
     RedefinedType(String),
 }
 
