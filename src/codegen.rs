@@ -123,19 +123,21 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
 
     fn write_struct(&mut self, struct_: &StructDefinition) -> io::Result<()> {
         const TEMPLATE: &'static str = r#"
+/* =========================================== */
+        
+const _{name}Fields: StructField[] = [
+{{ for field in fields }}
+  \{ name: "{field.name}", ty: {field.info} },
+{{ endfor }}
+];
 export class {name} extends StructMessage \{
-  getFields(): StructField[] \{
-    return [
-{{ for field in fields }}      \{ name: "{field.name}", ty: {field.info} },
-{{ endfor }}    ];
-  }
-
   static create(body: FieldsOf<{name}>): {name} \{
     return Object.assign(new {name}(), body);
   }
 
 {{ for field in fields }}  public {field.name}!: {field.ty};
 {{ endfor }}}
+_fieldsMap.set({name}, _{name}Fields);
 "#;
 
         let mut tt = TinyTemplate::new();
@@ -219,16 +221,19 @@ function valueToPlainObject(value: any, ty: TyKind) {
   }
 }
 
+export type Constructor<T> = new(...arguments_: any) => T;
+
+let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
+
 abstract class Message {
   abstract toPlainObject(): object;
 }
 
 abstract class StructMessage extends Message {
-  protected abstract getFields(): StructField[];
   toPlainObject(): object {
     let result: Record<string, any> = {};
 
-    let fields = this.getFields();
+    let fields = _fieldsMap.get(Object.getPrototypeOf(this).constructor)!;
     for (let i = 0; i < fields.length; ++i) {
       const { name, ty } = fields[i];
       const value = this[name];
