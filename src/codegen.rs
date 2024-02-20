@@ -6,6 +6,9 @@ use std::path::Path;
 use std::write;
 
 use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
+use serde::Serialize;
+
+use tinytemplate::TinyTemplate;
 
 pub trait Language {
     fn lang_id(&self) -> &'static str;
@@ -78,13 +81,55 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
     }
 
     fn write_struct(&mut self, struct_: &StructDefinition) -> io::Result<()> {
-        let mut field_lines = String::new();
+        const TEMPLATE: &'static str = r#"
+export class {name} extends StructMessage \{
+  getFields(): StructField[] \{
+    return [];
+  }
 
-        for f in struct_.fields.iter() {
-            Self::render_field(&mut field_lines, f);
+  static create(body: FieldsOf<{name}>): {name} \{
+    return Object.assign(new {name}(), body);
+  }
+
+{{ for field in fields }}  public {field.name}!: {field.ty};
+{{ endfor }}}
+"#;
+
+        #[derive(Serialize)]
+        struct RenderedField<'a> {
+            name: &'a str,
+            ty: String,
         }
 
-        // println!("{}", field_lines);
+        #[derive(Serialize)]
+        struct Context<'a> {
+            name: &'a str,
+            fields: Vec<RenderedField<'a>>,
+        }
+
+        let mut tt = TinyTemplate::new();
+        tt.add_template("main", TEMPLATE).unwrap();
+        tt.set_default_formatter(&tinytemplate::format_unescaped);
+
+        let context = Context {
+            name: &struct_.name,
+            fields: struct_
+                .fields
+                .iter()
+                .map(|field| RenderedField {
+                    name: &field.name,
+                    ty: {
+                        let mut rendered = String::new();
+                        Self::render_type(&mut rendered, &field.datatype).unwrap();
+                        rendered
+                    },
+                })
+                .collect(),
+        };
+
+        let rendered = tt.render("main", &context).unwrap();
+
+        write!(&mut self.dest, "{}", rendered)?;
 
         Ok(())
     }
@@ -98,34 +143,9 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
 
         Ok(())
     }
-
-    // fn generate(&mut self, program: &Program) -> io::Result<()> {
-    //     const INDENT: &'static str = "    ";
-
-    //     for struct_ in program.structs.iter() {
-    //         writeln!(&mut self.dest, "type {} = {{", struct_.name.as_str())?;
-
-    //         for (index, field) in struct_.fields.iter().enumerate() {
-    //             // The comma and new line
-    //             if index != 0 {
-    //                 write!(&mut self.dest, ",\n")?;
-    //             }
-
-    //             // indent
-    //             write!(&mut self.dest, "{}", INDENT)?;
-    //             // name: datatype
-    //             write!(&mut self.dest, "{}: ", field.name)?;
-    //             Self::write_type(&mut self.dest, &field.datatype)?;
-    //         }
-
-    //         writeln!(&mut self.dest, "\n}};\n")?;
-    //     }
-
-    //     Ok(())
-    // }
 }
 
-const TS_HEADER: &'static str = r"#
+const TS_HEADER: &'static str = r#"
 const enum TyKindTag {
   Primitive,
   Message,
@@ -195,4 +215,4 @@ type FieldsOf<T> = Pick<
     [K in keyof T]: T[K] extends Function ? never : K;
   }[keyof T]
 >;
-#";
+"#;
