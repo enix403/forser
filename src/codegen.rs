@@ -211,7 +211,7 @@ function valueToPlainObject(value: any, ty: TyKind) {
   }
   //
   else if (ty.kind === TyKindTag.Message) {
-    return (value as Message).toPlainObject();
+    return value.toPlainObject();
   }
   //
   else if (ty.kind === TyKindTag.Array) {
@@ -226,11 +226,11 @@ export type Constructor<T> = new(...arguments_: any) => T;
 let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
 
 abstract class Message {
-  abstract toPlainObject(): object;
+  protected abstract toPlainObject(): object;
 }
 
 abstract class StructMessage extends Message {
-  toPlainObject(): object {
+  protected toPlainObject(): object {
     let result: Record<string, any> = {};
 
     let fields = _fieldsMap.get(Object.getPrototypeOf(this).constructor)!;
@@ -247,7 +247,9 @@ abstract class StructMessage extends Message {
 
 namespace forser {
   export function packMessage<M extends Message>(message: M) {
-    return JSON.stringify((message as Message).toPlainObject());
+    return JSON.stringify(
+      valueToPlainObject(message, { kind: TyKindTag.Message })
+    );
   }
 }
 
