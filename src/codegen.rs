@@ -187,7 +187,6 @@ _fieldsMap.set({name}, _{name}Fields);
 
 const TS_HEADER: &'static str = r#"
 export type Constructor<T> = new (...arguments_: any) => T;
-export type Instance<I> = I extends Constructor<infer T> ? T : never;
 
 let _messageMap: Map<string, Constructor<StructMessage>> = new Map();
 let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
@@ -282,10 +281,10 @@ namespace forser {
     );
   }
 
-  export function unpackMessage<M extends Constructor<StructMessage>>(
-    messageType: M,
+  export function unpackMessage<M extends StructMessage>(
+    messageType: Constructor<M>,
     serialized: string
-  ): Instance<M> {
+  ): M {
     let obj = JSON.parse(serialized);
     return plainObjectToValue(obj, {
       kind: TyKindTag.Message,
