@@ -56,7 +56,7 @@ struct RenderedField<'a> {
 enum TsFieldType {
     Primitve,
     Array(Box<TsFieldType>),
-    Message,
+    Message(String),
 }
 
 impl TsFieldType {
@@ -65,8 +65,8 @@ impl TsFieldType {
             TsFieldType::Primitve => {
                 write!(dest, "{{ kind: TyKindTag.Primitive }}").unwrap();
             }
-            TsFieldType::Message => {
-                write!(dest, "{{ kind: TyKindTag.Message }}").unwrap();
+            TsFieldType::Message(name) => {
+                write!(dest, "{{ kind: TyKindTag.Message, of: \"{}\" }}", name).unwrap();
             }
             TsFieldType::Array(ref inner) => {
                 write!(dest, "{{ kind: TyKindTag.Array, of: ");
@@ -87,7 +87,7 @@ impl From<&TyKind> for TsFieldType {
     fn from(value: &TyKind) -> Self {
         match value {
             TyKind::Primitive(..) => TsFieldType::Primitve,
-            TyKind::UserDefined(..) => TsFieldType::Message,
+            TyKind::UserDefined(name) => TsFieldType::Message(name.clone()),
             TyKind::Array(inner) => TsFieldType::Array(Box::new(inner.as_ref().into())),
             TyKind::Nullable(inner) => inner.as_ref().into(),
         }
@@ -137,6 +137,7 @@ export class {name} extends StructMessage \{
 
 {{ for field in fields }}  public {field.name}!: {field.ty};
 {{ endfor }}}
+_messageMap.set("{name}", {name});
 _fieldsMap.set({name}, _{name}Fields);
 "#;
 
@@ -185,15 +186,25 @@ _fieldsMap.set({name}, _{name}Fields);
 }
 
 const TS_HEADER: &'static str = r#"
+export type Constructor<T> = new (...arguments_: any) => T;
+export type Instance<I> = I extends Constructor<infer T> ? T : never;
+
+let _messageMap: Map<string, Constructor<StructMessage>> = new Map();
+let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
+
+abstract class StructMessage {}
+
 const enum TyKindTag {
   Primitive,
   Message,
   Array,
 }
 
+type MessageClassID = string | Constructor<StructMessage>;
+
 type TyKind =
   | { kind: TyKindTag.Primitive }
-  | { kind: TyKindTag.Message }
+  | { kind: TyKindTag.Message; of: MessageClassID }
   | { kind: TyKindTag.Array; of: TyKind };
 
 type StructField = {
@@ -230,18 +241,56 @@ function valueToPlainObject(value: any, ty: TyKind) {
   }
 }
 
-export type Constructor<T> = new(...arguments_: any) => T;
+function plainObjectToValue(obj: any, ty: TyKind) {
+  if (obj === null) {
+    return null;
+  }
+  //
+  else if (ty.kind === TyKindTag.Primitive) {
+    return obj;
+  } else if (ty.kind === TyKindTag.Message) {
+    let ctor = typeof ty.of === "string" ? _messageMap.get(ty.of)! : ty.of;
+    let fields = _fieldsMap.get(ctor)!;
 
-let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
+    let createPayload = {};
+    for (let i = 0; i < fields.length; ++i) {
+      const { name: fieldName, ty } = fields[i];
+      const fieldVal = obj[fieldName];
+      createPayload[fieldName] = plainObjectToValue(fieldVal, ty);
+    }
 
-abstract class Message {}
-abstract class StructMessage extends Message {}
+    // TODO: Make this strongly typed
+    return (ctor as any).create(createPayload);
+  }
+  //
+  else if (ty.kind === TyKindTag.Array) {
+    return (obj as any[]).map((val) => plainObjectToValue(val, ty.of));
+  }
+  //
+  else {
+    throw new Error("Invalid value/ty");
+  }
+}
 
 namespace forser {
-  export function packMessage<M extends Message>(message: M) {
+  export function packMessage<M extends StructMessage>(message: M) {
     return JSON.stringify(
-      valueToPlainObject(message, { kind: TyKindTag.Message })
+      valueToPlainObject(message, {
+        kind: TyKindTag.Message,
+        of: Object.getPrototypeOf(message).constructor,
+      })
     );
+  }
+
+  export function unpackMessage<M extends Constructor<StructMessage>>(
+    messageType: M,
+    serialized: string
+  ): Instance<M> {
+    let obj = JSON.parse(serialized);
+    return plainObjectToValue(obj, {
+      kind: TyKindTag.Message,
+      of: messageType,
+    });
   }
 }
 

@@ -39,7 +39,6 @@ export type Instance<I> = I extends Constructor<infer T> ? T : never;
 let _messageMap: Map<string, Constructor<StructMessage>> = new Map();
 let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
 
-// abstract class Message {}
 abstract class StructMessage {}
 
 const enum TyKindTag {
@@ -89,7 +88,7 @@ function valueToPlainObject(value: any, ty: TyKind) {
   }
 }
 
-function plainObjectToValue(obj, ty: TyKind) {
+function plainObjectToValue(obj: any, ty: TyKind) {
   if (obj === null) {
     return null;
   }
@@ -202,8 +201,7 @@ let foo1 = Foo.create({
   ],
 });
 
-console.log(foo1);
-
+console.log(Object.getPrototypeOf(foo1.bar[0][0]).constructor);
 
 let json = `{
   "x": null,
@@ -228,4 +226,4 @@ let json = `{
 }`;
 
 let foo2 = forser.unpackMessage(Foo, json);
-console.log(foo2);
+console.log(Object.getPrototypeOf(foo2.bar[0][0]).constructor);
