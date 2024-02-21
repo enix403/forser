@@ -174,7 +174,7 @@ _fieldsMap.set({name}, _{name}Fields);
     }
 
     fn generate(&mut self, program: &Program) -> io::Result<()> {
-        write!(&mut self.dest, "{}", TS_HEADER)?;
+        write!(&mut self.dest, "{}", TS_HEADER.trim_start())?;
 
         for struct_ in program.structs.iter() {
             self.write_struct(struct_);
@@ -211,13 +211,22 @@ function valueToPlainObject(value: any, ty: TyKind) {
   }
   //
   else if (ty.kind === TyKindTag.Message) {
-    return value.toPlainObject();
+    let result: Record<string, any> = {};
+
+    let fields = _fieldsMap.get(Object.getPrototypeOf(value).constructor)!;
+    for (let i = 0; i < fields.length; ++i) {
+      const { name: fieldName, ty } = fields[i];
+      const fieldVal = value[fieldName];
+      result[fieldName] = valueToPlainObject(fieldVal, ty);
+    }
+
+    return result;
   }
   //
   else if (ty.kind === TyKindTag.Array) {
     return (value as any[]).map((val) => valueToPlainObject(val, ty.of));
   } else {
-    throw new Error('Invalid value/ty');
+    throw new Error("Invalid value/ty");
   }
 }
 
@@ -225,25 +234,8 @@ export type Constructor<T> = new(...arguments_: any) => T;
 
 let _fieldsMap: Map<Constructor<StructMessage>, StructField[]> = new Map();
 
-abstract class Message {
-  protected abstract toPlainObject(): object;
-}
-
-abstract class StructMessage extends Message {
-  protected toPlainObject(): object {
-    let result: Record<string, any> = {};
-
-    let fields = _fieldsMap.get(Object.getPrototypeOf(this).constructor)!;
-    for (let i = 0; i < fields.length; ++i) {
-      const { name, ty } = fields[i];
-      const value = this[name];
-
-      result[name] = valueToPlainObject(value, ty);
-    }
-
-    return result;
-  }
-}
+abstract class Message {}
+abstract class StructMessage extends Message {}
 
 namespace forser {
   export function packMessage<M extends Message>(message: M) {
