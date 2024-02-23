@@ -21,7 +21,6 @@ use lexer::ForserFile;
 use lexer::Lexer;
 use parser::{ParseError, Parser};
 
-use generators::TypeScriptGenerator;
 
 #[derive(ClapParser, Debug)]
 #[command(version, about, long_about = None)]
@@ -48,8 +47,10 @@ struct Args {
 
 lazy_static! {
     static ref GENERATORS: HashMap<&'static str, Box<dyn Language>> = {
+        use crate::generators::*;
         let mut m: HashMap<&'static str, Box<dyn Language>> = HashMap::new();
         m.insert("ts", Box::new(TypeScriptGenerator::new()));
+        m.insert("py", Box::new(PythonGenerator::new()));
         m
     };
 }

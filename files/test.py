@@ -1,14 +1,3 @@
-"""
-struct Foo {
-  x: int?,
-  bar: [[Bar]]
-}
-
-struct Bar {
-  y: int
-}
-"""
-
 from __future__ import annotations
 from typing import Literal, Optional, cast, Type, TypeVar, Union, Dict, Any, List
 from dataclasses import dataclass
@@ -70,40 +59,34 @@ def pack_message(message: StructMessage):
         )
     )
 
-# ================================ #
-
+# =========================================== #
+        
 _FooFields: list[StructField] = [
-    StructField('x', ty=TyKind('primitive')),
-    StructField('bar', ty=TyKind(
-        'array',
-        of=TyKind(
-            'array',
-            of=TyKind(
-                'message',
-                ctor='Bar'
-            )
-        )
-    )),
-]
 
+  StructField("x", ty=TyKind('primitive')),
+
+  StructField("bar", ty=TyKind('array', of=TyKind('array', of=TyKind('message', ctor="Bar")))),
+
+]
 @dataclass
-class Foo(StructMessage):
+class Foo(StructMessage) :
     x: Optional[int]
-    bar: list[list['Bar']]
+    bar: List[List[Bar]]
 
 _fields_map[Foo] = _FooFields
 
-# ================================ #
-
+# =========================================== #
+        
 _BarFields: list[StructField] = [
-    StructField('y', ty=TyKind('primitive')),
-]
 
+  StructField("y", ty=TyKind('primitive')),
+
+]
 @dataclass
-class Bar(StructMessage):
+class Bar(StructMessage) :
     y: int
 
-_fields_map[Bar] = _BarFields 
+_fields_map[Bar] = _BarFields
 
 foo = Foo(
     x=45,

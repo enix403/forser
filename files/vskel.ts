@@ -118,26 +118,24 @@ function plainObjectToValue(obj: any, ty: TyKind) {
   }
 }
 
-namespace forser {
-  export function packMessage<M extends StructMessage>(message: M) {
-    return JSON.stringify(
-      valueToPlainObject(message, {
-        kind: TyKindTag.Message,
-        of: Object.getPrototypeOf(message).constructor,
-      })
-    );
-  }
-
-  export function unpackMessage<M extends StructMessage>(
-    messageType: Constructor<M>,
-    serialized: string
-  ): M {
-    let obj = JSON.parse(serialized);
-    return plainObjectToValue(obj, {
+export function packMessage<M extends StructMessage>(message: M) {
+  return JSON.stringify(
+    valueToPlainObject(message, {
       kind: TyKindTag.Message,
-      of: messageType,
-    });
-  }
+      of: Object.getPrototypeOf(message).constructor,
+    })
+  );
+}
+
+export function unpackMessage<M extends StructMessage>(
+  messageType: Constructor<M>,
+  serialized: string
+): M {
+  let obj = JSON.parse(serialized);
+  return plainObjectToValue(obj, {
+    kind: TyKindTag.Message,
+    of: messageType,
+  });
 }
 
 type FieldsOf<T> = Pick<
@@ -224,5 +222,5 @@ let json = `{
   ]
 }`;
 
-let foo2 = forser.unpackMessage(Foo, json);
+let foo2 = unpackMessage(Foo, json);
 console.log(Object.getPrototypeOf(foo2.bar[0][0]).constructor);
