@@ -25,7 +25,7 @@ impl Language for TypeScriptGenerator {
     fn lang_id(&self) -> &'static str {
         "ts"
     }
-    fn generate(&mut self, program: &Program, outdir: &Path) {
+    fn generate(&self, program: &Program, outdir: &Path) {
         let dest = OpenOptions::new()
             .write(true)
             .create(true)
