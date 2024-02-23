@@ -49,22 +49,22 @@ struct RenderedField<'a> {
 }
 
 #[derive(Serialize, Clone)]
-enum TsFieldType {
+enum PyFieldType {
     Primitve,
-    Array(Box<TsFieldType>),
+    Array(Box<PyFieldType>),
     Message(String),
 }
 
-impl TsFieldType {
+impl PyFieldType {
     fn write_ts_field_type(&self, dest: &mut String) {
         match self {
-            TsFieldType::Primitve => {
+            PyFieldType::Primitve => {
                 write!(dest, "TyKind('primitive')").unwrap();
             }
-            TsFieldType::Message(name) => {
+            PyFieldType::Message(name) => {
                 write!(dest, "TyKind('message', ctor=\"{}\")", name).unwrap();
             }
-            TsFieldType::Array(ref inner) => {
+            PyFieldType::Array(ref inner) => {
                 write!(dest, "TyKind('array', of=");
                 inner.write_ts_field_type(&mut *dest);
                 write!(dest, ")");
@@ -79,12 +79,12 @@ struct StructContext<'a> {
     fields: Vec<RenderedField<'a>>,
 }
 
-impl From<&TyKind> for TsFieldType {
+impl From<&TyKind> for PyFieldType {
     fn from(value: &TyKind) -> Self {
         match value {
-            TyKind::Primitive(..) => TsFieldType::Primitve,
-            TyKind::UserDefined(name) => TsFieldType::Message(name.clone()),
-            TyKind::Array(inner) => TsFieldType::Array(Box::new(inner.as_ref().into())),
+            TyKind::Primitive(..) => PyFieldType::Primitve,
+            TyKind::UserDefined(name) => PyFieldType::Message(name.clone()),
+            TyKind::Array(inner) => PyFieldType::Array(Box::new(inner.as_ref().into())),
             TyKind::Nullable(inner) => inner.as_ref().into(),
         }
     }
@@ -148,7 +148,7 @@ _fields_map[{name}] = _{name}Fields
                     name: &field.name,
                     info: {
                         let mut info = String::new();
-                        let ts_field: TsFieldType = (&field.datatype).into();
+                        let ts_field: PyFieldType = (&field.datatype).into();
                         ts_field.write_ts_field_type(&mut info);
                         info
                     },
