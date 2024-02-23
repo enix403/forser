@@ -52,7 +52,7 @@ mod guards {
 
     pub fn is_reserved(name: &str) -> bool {
         match name {
-            "string" | "int" | "struct" => false,
+            "struct" | "string" | "int" | "float" | "bool" => false,
             _ => true,
         }
     }
@@ -121,6 +121,8 @@ where
             match name.as_str() {
                 "string" => TyKind::Primitive(PrimitiveType::String),
                 "int" => TyKind::Primitive(PrimitiveType::Int),
+                "float" => TyKind::Primitive(PrimitiveType::Float),
+                "bool" => TyKind::Primitive(PrimitiveType::Bool),
                 _ => {
                     // If the referenced type is not yet defined, then add it to
                     // pending_types to be checked later

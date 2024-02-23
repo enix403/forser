@@ -1,6 +1,8 @@
 struct Foo {
   x: int?,
-  bar: [[Bar]]
+  bar: [[Bar]],
+  created: bool,
+  price: float
 }
 
 struct Bar {

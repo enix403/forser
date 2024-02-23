@@ -104,6 +104,8 @@ impl<W: Write> TypeScriptGeneratorInner<W> {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveType::String => write!(dest, "string")?,
                 PrimitiveType::Int => write!(dest, "number")?,
+                PrimitiveType::Float => write!(dest, "number")?,
+                PrimitiveType::Bool => write!(dest, "boolean")?,
             },
             TyKind::UserDefined(ref name) => write!(dest, "{}", name)?,
             TyKind::Array(ref ty) => {

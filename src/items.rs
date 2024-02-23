@@ -2,6 +2,8 @@
 pub enum PrimitiveType {
     String,
     Int,
+    Float,
+    Bool
 }
 
 #[derive(Debug, Clone)]
