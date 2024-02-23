@@ -5,15 +5,11 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::write;
 
-use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
 use serde::Serialize;
-
 use tinytemplate::TinyTemplate;
 
-pub trait Language {
-    fn lang_id(&self) -> &'static str;
-    fn generate(&mut self, program: &Program, outdir: &Path);
-}
+use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
+use crate::language::Language;
 
 pub struct TypeScriptGenerator {
     _phantom: (),

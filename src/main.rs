@@ -6,16 +6,17 @@ use clap::Parser as ClapParser;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-pub mod codegen;
+pub mod language;
 pub mod items;
 pub mod lexer;
 pub mod parser;
 pub mod token;
+pub mod generators;
 
 use lexer::ForserFile;
 use lexer::Lexer;
 
-use codegen::Language;
+use language::Language;
 use parser::{ParseError, Parser};
 
 #[derive(ClapParser, Debug)]
@@ -28,6 +29,17 @@ struct Args {
     /// Directory where the build files will be stored
     #[arg(long, short)]
     out_dir: Option<PathBuf>,
+
+    /// Languages to generate the build for
+    #[clap(
+        short, long,
+        required = true,
+        value_parser = clap::builder::NonEmptyStringValueParser::new(),
+        require_equals = true,
+        num_args = 1..,
+        value_delimiter = ','
+    )]
+    langs: Vec<String>,
 }
 
 fn main() -> ExitCode {
@@ -44,7 +56,7 @@ fn main() -> ExitCode {
 
     match program {
         Ok(program) => {
-            let mut gen: Box<dyn Language> = Box::new(codegen::TypeScriptGenerator::new());
+            let mut gen: Box<dyn Language> = Box::new(generators::TypeScriptGenerator::new());
             let gen_outdir = args
                 .out_dir
                 .unwrap_or_else(|| "build".into())
