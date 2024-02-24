@@ -129,10 +129,11 @@ _{name}Fields: list[StructField] = [
 {{ endfor }}
 ]
 @dataclass
-class {name}(StructMessage) :
+class {name}(StructMessage):
 {{ for field in fields }}    {field.name}: {field.ty}
 {{ endfor }}
 _fields_map[{name}] = _{name}Fields
+_message_map['{name}'] = {name}
 "#;
 
         let mut tt = TinyTemplate::new();
@@ -169,7 +170,7 @@ _fields_map[{name}] = _{name}Fields
     }
 
     fn generate(&mut self, program: &Program) -> io::Result<()> {
-        write!(&mut self.dest, "{}", TS_HEADER.trim_start())?;
+        write!(&mut self.dest, "{}", HEADER.trim_start())?;
 
         for struct_ in program.structs.iter() {
             self.write_struct(struct_);
@@ -179,17 +180,16 @@ _fields_map[{name}] = _{name}Fields
     }
 }
 
-const TS_HEADER: &'static str = r#"
+const HEADER: &'static str = r#"
 from __future__ import annotations
 from typing import Literal, Optional, cast, Type, TypeVar, Union, Dict, Any, List
 from dataclasses import dataclass
 import json
 
-T = TypeVar('T', bound='StructMessage')
-MessageClassID = Union[str, Type[T]]
-
 class StructMessage:
     pass
+
+MessageClassID = Union[str, Type[StructMessage]]
 
 @dataclass
 class TyKind:
@@ -203,6 +203,7 @@ class StructField:
     ty: TyKind
 
 _fields_map: Dict[Type[StructMessage], List[StructField]] = {}
+_message_map: Dict[str, Type[StructMessage]] = {}
 
 def _value_to_plain_object(value: Any, ty: TyKind) -> Any:
     if value is None:
@@ -233,6 +234,39 @@ def _value_to_plain_object(value: Any, ty: TyKind) -> Any:
     else:
         raise ValueError("Invalid value/ty")
 
+def _plain_object_to_value(obj: Any, ty: TyKind):
+    if obj is None:
+        return None
+
+    elif ty.kind == 'primitive':
+        return obj
+
+    elif ty.kind == 'message':
+        ctor = cast(
+            Type[StructMessage],
+            _message_map[ty.ctor] if isinstance(ty.ctor, str) else ty.ctor
+        )
+        fields = _fields_map[ctor]
+
+        create_payload = {}
+        for f in fields:
+            create_payload[f.name] = _plain_object_to_value(
+                obj[f.name],
+                f.ty
+            )
+
+        return ctor(**create_payload)
+
+    elif ty.kind == 'array':
+        arr = cast(list[Any], obj)
+        inner = cast(TyKind, ty.of)
+        return list(map(
+            lambda val: _plain_object_to_value(val, inner),
+            arr
+        ))
+    else:
+        raise ValueError("Invalid value/ty")
+
 def pack_message(message: StructMessage):
     return json.dumps(
         _value_to_plain_object(
@@ -240,4 +274,14 @@ def pack_message(message: StructMessage):
             TyKind('message', ctor=message.__class__)
         )
     )
+
+T = TypeVar('T', bound='StructMessage')
+def unpack_message(message_type: Type[T], serialized: str) -> T:
+    obj = json.loads(serialized)
+    result = _plain_object_to_value(
+        obj,
+        TyKind('message', ctor=message_type)
+    )
+
+    return cast(T, result)
 "#;

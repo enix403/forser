@@ -3,11 +3,10 @@ from typing import Literal, Optional, cast, Type, TypeVar, Union, Dict, Any, Lis
 from dataclasses import dataclass
 import json
 
-T = TypeVar('T', bound='StructMessage')
-MessageClassID = Union[str, Type[T]]
-
 class StructMessage:
     pass
+
+MessageClassID = Union[str, Type[StructMessage]]
 
 @dataclass
 class TyKind:
@@ -21,6 +20,7 @@ class StructField:
     ty: TyKind
 
 _fields_map: Dict[Type[StructMessage], List[StructField]] = {}
+_message_map: Dict[str, Type[StructMessage]] = {}
 
 def _value_to_plain_object(value: Any, ty: TyKind) -> Any:
     if value is None:
@@ -51,6 +51,39 @@ def _value_to_plain_object(value: Any, ty: TyKind) -> Any:
     else:
         raise ValueError("Invalid value/ty")
 
+def _plain_object_to_value(obj: Any, ty: TyKind):
+    if obj is None:
+        return None
+
+    elif ty.kind == 'primitive':
+        return obj
+
+    elif ty.kind == 'message':
+        ctor = cast(
+            Type[StructMessage],
+            _message_map[ty.ctor] if isinstance(ty.ctor, str) else ty.ctor
+        )
+        fields = _fields_map[ctor]
+
+        create_payload = {}
+        for f in fields:
+            create_payload[f.name] = _plain_object_to_value(
+                obj[f.name],
+                f.ty
+            )
+
+        return ctor(**create_payload)
+
+    elif ty.kind == 'array':
+        arr = cast(list[Any], obj)
+        inner = cast(TyKind, ty.of)
+        return list(map(
+            lambda val: _plain_object_to_value(val, inner),
+            arr
+        ))
+    else:
+        raise ValueError("Invalid value/ty")
+
 def pack_message(message: StructMessage):
     return json.dumps(
         _value_to_plain_object(
@@ -59,21 +92,15 @@ def pack_message(message: StructMessage):
         )
     )
 
-# =========================================== #
-        
-_FooFields: list[StructField] = [
+T = TypeVar('T', bound='StructMessage')
+def unpack_message(message_type: Type[T], serialized: str) -> T:
+    obj = json.loads(serialized)
+    result = _plain_object_to_value(
+        obj,
+        TyKind('message', ctor=message_type)
+    )
 
-  StructField("x", ty=TyKind('primitive')),
-
-  StructField("bar", ty=TyKind('array', of=TyKind('array', of=TyKind('message', ctor="Bar")))),
-
-]
-@dataclass
-class Foo(StructMessage) :
-    x: Optional[int]
-    bar: List[List[Bar]]
-
-_fields_map[Foo] = _FooFields
+    return cast(T, result)
 
 # =========================================== #
         
@@ -87,6 +114,24 @@ class Bar(StructMessage) :
     y: int
 
 _fields_map[Bar] = _BarFields
+_message_map['Bar'] = Bar
+
+# =========================================== #
+        
+_FooFields: list[StructField] = [
+
+  StructField("x", ty=TyKind('primitive')),
+
+  StructField("bar", ty=TyKind('array', of=TyKind('array', of=TyKind('message', ctor="Bar")))),
+
+]
+@dataclass
+class Foo(StructMessage):
+    x: Optional[int]
+    bar: List[List[Bar]]
+
+_fields_map[Foo] = _FooFields
+_message_map['Foo'] = Foo
 
 foo = Foo(
     x=45,
@@ -96,4 +141,6 @@ foo = Foo(
     ]
 )
 
-print(pack_message(foo))
+packed = pack_message(foo)
+back = unpack_message(Foo, packed)
+print(back)
