@@ -9,18 +9,10 @@ use std::process::ExitCode;
 use clap::Parser as ClapParser;
 use lazy_static::lazy_static;
 
-pub mod generators;
-pub mod items;
-pub mod language;
-pub mod lexer;
-pub mod parser;
-pub mod token;
-
-use language::Language;
-use lexer::ForserFile;
-use lexer::Lexer;
-use parser::{ParseError, Parser};
-
+use forser::language::Language;
+use forser::lexer::ForserFile;
+use forser::lexer::Lexer;
+use forser::parser::{ParseError, Parser};
 
 #[derive(ClapParser, Debug)]
 #[command(version, about, long_about = None)]
@@ -47,7 +39,7 @@ struct Args {
 
 lazy_static! {
     static ref GENERATORS: HashMap<&'static str, Box<dyn Language>> = {
-        use crate::generators::*;
+        use forser::generators::*;
         let mut m: HashMap<&'static str, Box<dyn Language>> = HashMap::new();
         m.insert("ts", Box::new(TypeScriptGenerator::new()));
         m.insert("py", Box::new(PythonGenerator::new()));
