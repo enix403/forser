@@ -3,43 +3,21 @@ use std::io::Write;
 
 use crate::items::Program;
 
-#[derive(Debug, Clone)]
-struct Line<'t> {
-    indent: usize,
-    empty: bool,
-    content: &'t str,
-}
+// #[derive(Debug, Clone)]
+// struct Line {
+//     indent: usize,
+//     empty: bool,
+//     content: &'t str,
+// }
 
-#[derive(Debug, Clone)]
-struct Section<'t> {
-    // body: &'t str,
-    lines: Vec<Line<'t>>,
-}
-
-impl<'t> Section<'t> {
-    fn vertically_stripped(&self) -> &[Line<'t>] {
-        let start = self.lines.iter().take_while(|line| line.empty).count();
-        let count_end = self
-            .lines
-            .iter()
-            .rev()
-            .take_while(|line| line.empty)
-            .count();
-        let end = self.lines.len() - count_end;
-
-        &self.lines[start..end]
-    }
-}
-
-impl<'t> Default for Section<'t> {
-    fn default() -> Self {
-        // Self { body: "" }
-        Self { lines: vec![] }
-    }
+#[derive(Debug, Clone, Default)]
+pub struct Section<'t> {
+    // lines: Vec<Line>,
+    body: &'t str,
 }
 
 #[derive(Default)]
-struct Template<'t> {
+pub struct Template<'t> {
     prelude: Section<'t>,
     types: Section<'t>,
     type_visitor: Section<'t>,
@@ -48,44 +26,35 @@ struct Template<'t> {
 }
 
 impl<'t> Template<'t> {
-    fn create_line(raw: &str) -> Line<'_> {
-        if raw.trim().is_empty() {
-            Line {
-                empty: true,
-                indent: 0,
-                content: raw,
-            }
-        } else {
-            // Index of first non-whitespace character
-            let start = raw
-                .char_indices()
-                .find(|(index, ch)| !ch.is_whitespace())
-                .map(|(index, ch)| index)
-                .unwrap_or(0);
+    pub fn compile(content: &str) {
+        let mut template = Template::default();
+        let lines = content.split_inclusive('\n');
+        let mut cur_section: Option<&mut Section> = None;
 
-            Line {
-                empty: false,
-                indent: start, // TODO: Account for unicode whitespaces
-                content: raw[start..].trim_end(),
-            }
-        }
-    }
+        let mut start = 0;
+        let mut current = 0;
 
-    fn compile(content: &'t str) -> Self {
-        let mut template = Self::default();
+        for line in lines {
+            let len = line.len();
+            let current_new = current + len;
 
-        let mut cur_section: Option<&mut Section<'t>> = None;
+            // Strip trailing newlines
+            let line = line
+                .strip_suffix('\n')
+                .map(|line| line.strip_suffix('\r').unwrap_or(line))
+                .unwrap_or(line);
 
-        for mut line in content.lines() {
+            // println!("{}", line);
+
             if line.trim().starts_with("#") {
-                line = line.trim().strip_prefix("#").unwrap();
-                let (is_end, name) = if line.starts_with("end/") {
-                    (true, line.strip_prefix("end/").unwrap())
+                let line = line.trim().strip_prefix("#").unwrap();
+                let (is_start, name) = if line.starts_with("end/") {
+                    (false, line.strip_prefix("end/").unwrap())
                 } else {
-                    (false, line)
+                    (true, line)
                 };
 
-                if !is_end {
+                if is_start {
                     if cur_section.is_none() {
                         cur_section = Some(match name {
                             "prelude" => &mut template.prelude,
@@ -95,40 +64,25 @@ impl<'t> Template<'t> {
                             "message_struct" => &mut template.message_struct,
                             _ => panic!("Unknown Section"),
                         });
+
+                        start = current_new;
                     } else {
                         panic!("Already in section");
                     }
                 } else {
-                    cur_section = None;
+                    let section = cur_section.take().unwrap();
+
+                    section.body = &content[start..current];
                 }
-                continue;
-            } else if line.trim().starts_with("//") {
-                continue;
             }
 
-            match cur_section.as_mut().map(|ptr| &mut **ptr) {
-                None => {}
-                Some(section) => {
-                    section.lines.push(Self::create_line(line));
-                }
-            };
+            current = current_new;
         }
 
-        template
+
+        println!("{}", template.message_struct.body.trim());
+
     }
 }
 
-// fn generate_from_template<'t>(template: &'t str, program: &Program) {
-pub fn generate_from_template<'t>(template: &'t str) {
-    let template = Template::compile(template);
-
-    let mut output = String::new();
-
-    for line in template.prelude.vertically_stripped() {
-        output.push_str(&std::iter::repeat(' ').take(line.indent).collect::<String>());
-        output.push_str(line.content);
-        output.push('\n');
-    }
-
-    println!("{}", output);
-}
+// pub fn generate_from_template(template: &str) {}

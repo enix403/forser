@@ -1,7 +1,8 @@
 use forser::glang::*;
 
 fn main() {
-    generate_from_template(CODE);
+    // generate_from_template(CODE);
+    Template::compile(CODE);
 }
 
 static CODE: &'static str = r#"
