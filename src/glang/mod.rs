@@ -26,11 +26,11 @@ pub struct Template<'t> {
 }
 
 impl<'t> Template<'t> {
-    pub fn compile(content: &str) {
+    pub fn compile(content: &'t str) {
         let mut template = Template::default();
         let lines = content.split_inclusive('\n');
-        let mut cur_section: Option<&mut Section> = None;
 
+        let mut cur_section: Option<&mut Section<'t>> = None;
         let mut start = 0;
         let mut current = 0;
 
@@ -43,8 +43,6 @@ impl<'t> Template<'t> {
                 .strip_suffix('\n')
                 .map(|line| line.strip_suffix('\r').unwrap_or(line))
                 .unwrap_or(line);
-
-            // println!("{}", line);
 
             if line.trim().starts_with("#") {
                 let line = line.trim().strip_prefix("#").unwrap();
@@ -72,16 +70,14 @@ impl<'t> Template<'t> {
                 } else {
                     let section = cur_section.take().unwrap();
 
-                    section.body = &content[start..current];
+                    section.body = &content[start..current].trim();
                 }
             }
 
             current = current_new;
         }
 
-
-        println!("{}", template.message_struct.body.trim());
-
+        println!("{}", template.message_struct.body);
     }
 }
 
