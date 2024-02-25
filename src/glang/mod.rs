@@ -16,6 +16,21 @@ struct Section<'t> {
     lines: Vec<Line<'t>>,
 }
 
+impl<'t> Section<'t> {
+    fn vertically_stripped(&self) -> &[Line<'t>] {
+        let start = self.lines.iter().take_while(|line| line.empty).count();
+        let count_end = self
+            .lines
+            .iter()
+            .rev()
+            .take_while(|line| line.empty)
+            .count();
+        let end = self.lines.len() - count_end;
+
+        &self.lines[start..end]
+    }
+}
+
 impl<'t> Default for Section<'t> {
     fn default() -> Self {
         // Self { body: "" }
@@ -86,6 +101,7 @@ impl<'t> Template<'t> {
                 } else {
                     cur_section = None;
                 }
+                continue;
             } else if line.trim().starts_with("//") {
                 continue;
             }
@@ -108,9 +124,11 @@ pub fn generate_from_template<'t>(template: &'t str) {
 
     let mut output = String::new();
 
-    for line in template.prelude.lines {
+    for line in template.prelude.vertically_stripped() {
         output.push_str(&std::iter::repeat(' ').take(line.indent).collect::<String>());
         output.push_str(line.content);
         output.push('\n');
     }
+
+    println!("{}", output);
 }
