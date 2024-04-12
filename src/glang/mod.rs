@@ -128,35 +128,31 @@ impl<'t> TemplateSpan<'t> {
             VariableMutiple,
         }
 
-        let mut coming_lines = false;
+        let mut is_tail = false;
 
         for line in content.lines() {
-            if coming_lines {
+            if is_tail {
                 println!("NewLine");
-            }
-            else {
-                coming_lines = true;
+            } else {
+                is_tail = true;
             }
 
-            let mut start = 0;
-            // let mut indenting = true;
             let mut indent = 0;
-
+            let mut start = 0;
             let mut state = State::Indenting;
 
-            let mut chars = line.char_indices().peekable();
-            let num_chars = line.chars().count();
+            let mut chars = line.char_indices().collect::<Vec<_>>();
 
-            while let Some((index, c)) = chars.next() {
-                // let p = chars.peek().map(|x| x.1).unwrap_or(' ');
-                let p = chars.peek();
+            let mut i = 0;
+            while i < chars.len() {
+                let (index, c) = chars[i];
 
-                match (state, c, p) {
-                    (State::Indenting, c, _) if c.is_whitespace() => {
+                match (state, c) {
+                    (State::Indenting, c) if c.is_whitespace() => {
                         // current +=
                         indent += 1;
                     }
-                    (State::Indenting, c, _) => {
+                    (State::Indenting, c) => {
                         println!("Indent {}", indent);
                         state = if c == '%' {
                             State::VariableDetected
@@ -166,7 +162,7 @@ impl<'t> TemplateSpan<'t> {
                         start = index;
                     }
 
-                    (State::Literal, c, _) => {
+                    (State::Literal, c) => {
                         if c == '%' {
                             println!("Literal {}", &line[start..index]);
 
@@ -175,7 +171,7 @@ impl<'t> TemplateSpan<'t> {
                         }
                     }
 
-                    (State::VariableDetected, c, _) => {
+                    (State::VariableDetected, c) => {
                         if c == '%' {
                             state = State::VariableMutiple;
                             // Index of next char
@@ -186,7 +182,7 @@ impl<'t> TemplateSpan<'t> {
                         }
                     }
 
-                    (State::VariableSingle, c, _) => {
+                    (State::VariableSingle, c) => {
                         if c == '%' {
                             println!("VariableSingle {}", &line[start..index]);
 
@@ -195,20 +191,29 @@ impl<'t> TemplateSpan<'t> {
                         }
                     }
 
-                    (State::VariableMutiple, c, p) => {
-                        if c == '%' && p.is_some() && p.unwrap().1 == '%' {
-                            println!("VariableMutiple {}", &line[start..index]);
-                            state = State::Literal;
-                            start = index + '%'.len_utf16() * 2;
+                    (State::VariableMutiple, c) => {
+                        let next = chars.get(i + 1);
+                        if let Some(&(next_index, p)) = next {
+                            if c == '%' && p == '%' {
+                                println!("VariableMutiple {}", &line[start..index]);
+                                state = State::Literal;
+                                start = next_index + '%'.len_utf16();
+                                i += 1;
+                            }
                         }
                     }
 
                     _ => (),
                 }
+
+                i += 1;
             }
 
             if let State::Literal = state {
                 println!("Literal {}", &line[start..]);
+            }
+            else {
+
             }
         }
     }
