@@ -1,7 +1,7 @@
 use std::default::Default;
 use std::io::Write;
 
-use crate::items::Program;
+use crate::items::{Program, StructDefinition};
 
 // #[derive(Debug, Clone)]
 // struct Line {
@@ -16,7 +16,7 @@ pub struct Section<'t> {
     body: &'t str,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Template<'t> {
     prelude: Section<'t>,
     types: Section<'t>,
@@ -26,7 +26,7 @@ pub struct Template<'t> {
 }
 
 impl<'t> Template<'t> {
-    pub fn compile(content: &'t str) {
+    pub fn compile(content: &'t str) -> Self {
         let mut template = Template::default();
         let lines = content.split_inclusive('\n');
 
@@ -77,8 +77,126 @@ impl<'t> Template<'t> {
             current = current_new;
         }
 
-        println!("{}", template.message_struct.body);
+        template
+    }
+
+    pub fn render(&self, program: &Program) {
+        // write prelude
+        println!("{}", self.prelude.body);
+
+        for struct_ in program.structs.iter() {
+            self.render_struct(struct_);
+        }
+    }
+
+    fn render_struct(&self, struct_: &StructDefinition) {
+        // compile type map
+        // compile type visitor
+        // compile field visitor
+        // compile struct
     }
 }
 
-// pub fn generate_from_template(template: &str) {}
+enum Instruction<'t> {
+    Newline,
+
+    Indent(u16),
+
+    Literal(&'t str),
+
+    EvaluateSingle(&'t str),
+
+    EvaluateMultiple(&'t str),
+}
+
+pub struct TemplateSpan<'t> {
+    instructions: Vec<Instruction<'t>>,
+}
+
+impl<'t> TemplateSpan<'t> {
+    fn compile(content: &'t str) {
+        let mut span = TemplateSpan {
+            instructions: vec![],
+        };
+
+        for line in content.lines() {
+            let mut start = 0;
+            // let mut indenting = true;
+            let mut indent = 0;
+
+            #[derive(Clone, Copy)]
+            enum State {
+                Indenting,
+                Literal,
+                VariableDetected,
+                VariableSingle,
+                VariableMutiple,
+            }
+
+            let mut state = State::Indenting;
+
+            let mut chars = line.char_indices().peekable();
+            let num_chars = line.chars().count();
+
+            while let Some((index, c)) = chars.next() {
+                // let p = chars.peek().map(|x| x.1).unwrap_or(' ');
+                let p = chars.peek();
+
+                match (state, c, p) {
+                    (State::Indenting, c, _) if c.is_whitespace() => {
+                        // current +=
+                        indent += 1;
+                    }
+                    (State::Indenting, c, _) => {
+                        println!("Indent {}", indent);
+                        state = if c == '%' {
+                            State::VariableDetected
+                        } else {
+                            State::Literal
+                        };
+                        start = index;
+                    }
+
+                    (State::Literal, c, _) => {
+                        if c == '%' {
+                            println!("Literal {}", &line[start..index]);
+
+                            state = State::VariableDetected;
+                            start = index;
+                        }
+                    }
+
+                    (State::VariableDetected, c, p) => {
+                        if c == '%' {
+                            state = State::VariableMutiple;
+                            // Index of next char
+                            start = p.map(|p| p.0).unwrap_or(index);
+                        } else {
+                            state = State::VariableSingle;
+                            start = index;
+                        }
+                    }
+
+                    (State::VariableSingle, c, _) => {
+                        if c == '%' {
+                            println!("VariableSingle {}", &line[start..index]);
+
+                            state = State::Literal;
+                            start = index + c.len_utf16();
+                        }
+                    }
+
+                    (State::VariableMutiple, c, p) => {
+                        if c == '%' && p.is_some() && p.unwrap().1 == '%' {
+                            println!("VariableMutiple {}", &line[start..index]);
+                            state = State::Literal;
+                            start = p.map(|p| p.0).unwrap_or(index) + '%'.len_utf8();
+                        }
+                    }
+
+                    _ => (),
+                }
+            }
+        }
+    }
+}

@@ -1,8 +1,31 @@
+#![allow(unused)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+
 use forser::glang::*;
+use forser::items::Program;
+use forser::lexer::ForserFile;
+use forser::lexer::Lexer;
+use forser::parser::{ParseError, Parser};
+
+fn get_test_program() -> Program {
+    let file = ForserFile::new("files/one.fr").unwrap();
+    let mut source = file.source();
+    let lex = Lexer::new(&mut source);
+
+    let parser = Parser::new(lex);
+
+    parser.parse().unwrap()
+}
 
 fn main() {
     // generate_from_template(CODE);
-    Template::compile(CODE);
+    let template = Template::compile(CODE);
+    let program = get_test_program();
+
+    // println!("{:#?}", template);
+
+    template.render(&program);
 }
 
 static CODE: &'static str = r#"
@@ -24,12 +47,12 @@ type StructField = {
 
 #types
 
-string = string;
-int    = number;
-float  = float;
-bool   = boolean;
-array  = Array<%T%>;
-null   = %T% | null;
+string = { string }
+int    = { number }
+float  = { float }
+bool   = { boolean }
+array  = { Array<%T%> }
+null   = { %T% | null }
 
 #end/types
 
@@ -37,17 +60,17 @@ null   = %T% | null;
 
 #type_visitor
 
-primitive = { kind: TyKindTag.Primitive };
+primitive = {{ kind: TyKindTag.Primitive }}
 
-message = {
+message = {{
     kind: TyKindTag.Message,
     of: "%name%"
-};
+}}
 
-array = {
+array = {{
     kind: TyKindTag.Array,
     of: %of%
-};
+}}
 
 #end/type_visitor
 
@@ -62,11 +85,11 @@ public %name%!: %ty%;
 #message_struct
 
 const _%name%Fields: StructField[] = [
-    %type_ast%
+    %%type_ast/,%%
 ];
 
 export class %name% extends StructMessage {
-    %fields%
+    %%fields%%
 }
 
 _messageMap.set("%name%", %name%);
