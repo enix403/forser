@@ -134,7 +134,7 @@ impl<'t> TemplateSpan<'t> {
 
         for line in content.lines() {
             if is_tail {
-                println!("NewLine");
+                span.instructions.push(Instruction::Newline);
             } else {
                 is_tail = true;
             }
@@ -155,8 +155,9 @@ impl<'t> TemplateSpan<'t> {
                         indent += 1;
                     }
                     (State::Indenting, c) => {
-                        // println!("Indent {}", indent);
-                        span.instructions.push(Instruction::Indent(indent));
+                        if indent > 0 {
+                            span.instructions.push(Instruction::Indent(indent));
+                        }
                         state = if c == '%' {
                             State::VariableDetected
                         } else {
@@ -167,8 +168,10 @@ impl<'t> TemplateSpan<'t> {
 
                     (State::Literal, c) => {
                         if c == '%' {
-                            span.instructions
-                                .push(Instruction::Literal(&line[start..index]));
+                            if (index > start) {
+                                span.instructions
+                                    .push(Instruction::Literal(&line[start..index]));
+                            }
                             state = State::VariableDetected;
                             start = index;
                         }
@@ -199,7 +202,6 @@ impl<'t> TemplateSpan<'t> {
                         let next = chars.get(i + 1);
                         if let Some(&(next_index, p)) = next {
                             if c == '%' && p == '%' {
-                                println!("VariableMutiple {}", &line[start..index]);
                                 span.instructions
                                     .push(Instruction::EvaluateMultiple(&line[start..index]));
                                 state = State::Literal;
@@ -216,8 +218,10 @@ impl<'t> TemplateSpan<'t> {
             }
 
             if let State::Literal = state {
-                span.instructions.push(Instruction::Literal(&line[start..]));
-                println!("Literal {}", &line[start..]);
+                let lit = &line[start..];
+                if !lit.is_empty() {
+                    span.instructions.push(Instruction::Literal(lit));
+                }
             } else {
                 // syntax error
                 panic!("Syntax error in TemplateSpan");
