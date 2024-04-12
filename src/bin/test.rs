@@ -24,7 +24,8 @@ fn main() {
 
     // template.render(&program);
 
-    TemplateSpan::compile("{\n    kind: TyKindTag.Message,\n    of: \"%%name%%\"\n}");
+    let span = TemplateSpan::compile("{\n    kind: %%TyKindTag%%.Message,\n    of: %name%\n}");
+    println!("{:#?}", span);
 }
 
 static CODE: &'static str = r#"

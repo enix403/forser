@@ -97,6 +97,7 @@ impl<'t> Template<'t> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 enum Instruction<'t> {
     Newline,
 
@@ -109,12 +110,13 @@ enum Instruction<'t> {
     EvaluateMultiple(&'t str),
 }
 
+#[derive(Clone, Debug)]
 pub struct TemplateSpan<'t> {
     instructions: Vec<Instruction<'t>>,
 }
 
 impl<'t> TemplateSpan<'t> {
-    pub fn compile(content: &'t str) {
+    pub fn compile(content: &'t str) -> TemplateSpan {
         let mut span = TemplateSpan {
             instructions: vec![],
         };
@@ -153,7 +155,8 @@ impl<'t> TemplateSpan<'t> {
                         indent += 1;
                     }
                     (State::Indenting, c) => {
-                        println!("Indent {}", indent);
+                        // println!("Indent {}", indent);
+                        span.instructions.push(Instruction::Indent(indent));
                         state = if c == '%' {
                             State::VariableDetected
                         } else {
@@ -164,8 +167,8 @@ impl<'t> TemplateSpan<'t> {
 
                     (State::Literal, c) => {
                         if c == '%' {
-                            println!("Literal {}", &line[start..index]);
-
+                            span.instructions
+                                .push(Instruction::Literal(&line[start..index]));
                             state = State::VariableDetected;
                             start = index;
                         }
@@ -184,7 +187,8 @@ impl<'t> TemplateSpan<'t> {
 
                     (State::VariableSingle, c) => {
                         if c == '%' {
-                            println!("VariableSingle {}", &line[start..index]);
+                            span.instructions
+                                .push(Instruction::EvaluateSingle(&line[start..index]));
 
                             state = State::Literal;
                             start = index + c.len_utf16();
@@ -196,6 +200,8 @@ impl<'t> TemplateSpan<'t> {
                         if let Some(&(next_index, p)) = next {
                             if c == '%' && p == '%' {
                                 println!("VariableMutiple {}", &line[start..index]);
+                                span.instructions
+                                    .push(Instruction::EvaluateMultiple(&line[start..index]));
                                 state = State::Literal;
                                 start = next_index + '%'.len_utf16();
                                 i += 1;
@@ -210,11 +216,14 @@ impl<'t> TemplateSpan<'t> {
             }
 
             if let State::Literal = state {
+                span.instructions.push(Instruction::Literal(&line[start..]));
                 println!("Literal {}", &line[start..]);
-            }
-            else {
-
+            } else {
+                // syntax error
+                panic!("Syntax error in TemplateSpan");
             }
         }
+
+        span
     }
 }
