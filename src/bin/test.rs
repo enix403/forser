@@ -19,13 +19,12 @@ fn get_test_program() -> Program {
 }
 
 fn main() {
-    // generate_from_template(CODE);
-    let template = Template::compile(CODE);
-    let program = get_test_program();
+    // let template = Template::compile(CODE);
+    // let program = get_test_program();
 
-    // println!("{:#?}", template);
+    // template.render(&program);
 
-    template.render(&program);
+    TemplateSpan::compile("{\n    kind: TyKindTag.Message,\n    of: \"%%name%%\"\n}");
 }
 
 static CODE: &'static str = r#"

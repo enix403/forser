@@ -114,24 +114,33 @@ pub struct TemplateSpan<'t> {
 }
 
 impl<'t> TemplateSpan<'t> {
-    fn compile(content: &'t str) {
+    pub fn compile(content: &'t str) {
         let mut span = TemplateSpan {
             instructions: vec![],
         };
 
+        #[derive(Clone, Copy)]
+        enum State {
+            Indenting,
+            Literal,
+            VariableDetected,
+            VariableSingle,
+            VariableMutiple,
+        }
+
+        let mut coming_lines = false;
+
         for line in content.lines() {
+            if coming_lines {
+                println!("NewLine");
+            }
+            else {
+                coming_lines = true;
+            }
+
             let mut start = 0;
             // let mut indenting = true;
             let mut indent = 0;
-
-            #[derive(Clone, Copy)]
-            enum State {
-                Indenting,
-                Literal,
-                VariableDetected,
-                VariableSingle,
-                VariableMutiple,
-            }
 
             let mut state = State::Indenting;
 
@@ -166,11 +175,11 @@ impl<'t> TemplateSpan<'t> {
                         }
                     }
 
-                    (State::VariableDetected, c, p) => {
+                    (State::VariableDetected, c, _) => {
                         if c == '%' {
                             state = State::VariableMutiple;
                             // Index of next char
-                            start = p.map(|p| p.0).unwrap_or(index);
+                            start = index + '%'.len_utf16();
                         } else {
                             state = State::VariableSingle;
                             start = index;
@@ -190,12 +199,16 @@ impl<'t> TemplateSpan<'t> {
                         if c == '%' && p.is_some() && p.unwrap().1 == '%' {
                             println!("VariableMutiple {}", &line[start..index]);
                             state = State::Literal;
-                            start = p.map(|p| p.0).unwrap_or(index) + '%'.len_utf8();
+                            start = index + '%'.len_utf16() * 2;
                         }
                     }
 
                     _ => (),
                 }
+            }
+
+            if let State::Literal = state {
+                println!("Literal {}", &line[start..]);
             }
         }
     }
