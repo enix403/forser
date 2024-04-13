@@ -74,6 +74,12 @@ const _%name%Fields: StructField[] = [
 "#;
 
 /*
+export class %name% extends StructMessage {
+    %%fields%%
+}
+*/
+
+/*
 
 AstExpandeR {
     expand() {

@@ -104,8 +104,10 @@ impl<'t> Template<'t> {
             }
         });
 
+        let message_body_span = TemplateSpan::compile(self.message_struct.body);
+
         for struct_ in program.structs.iter() {
-            let mut scope = Scope::new()
+            let scope = Scope::new()
                 /* ... */
                 .add_text("name", &struct_.name)
                 .add_expander(
@@ -113,10 +115,7 @@ impl<'t> Template<'t> {
                     TypeAstExpander::new(&spanset, struct_.fields.iter()),
                 );
 
-            // TODO: compile only once instead of for each new struct
-            let span = TemplateSpan::compile(self.message_struct.body);
-
-            span.print(0, scope);
+            message_body_span.print(0, scope);
 
             print!("\n");
         }

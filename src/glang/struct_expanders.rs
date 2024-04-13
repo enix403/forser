@@ -46,25 +46,23 @@ impl<'s, 'k, 't> Expander for SingleTypeAstExpander<'s, 'k, 't> {
     }
 }
 
-pub struct TypeAstExpander<'s, 't, 'f, F> {
-    spanset: &'s TypeAstSpans<'t>,
+pub struct TypeAstExpander<'s, F> {
+    spanset: &'s TypeAstSpans<'s>,
     fields: F,
-    _phantom: PhantomData<&'f ()>,
 }
 
-impl<'s, 't, 'f, F> TypeAstExpander<'s, 't, 'f, F> {
-    pub fn new(spanset: &'s TypeAstSpans<'t>, fields: F) -> Self {
+impl<'s, F> TypeAstExpander<'s, F> {
+    pub fn new(spanset: &'s TypeAstSpans<'s>, fields: F) -> Self {
         Self {
             spanset,
             fields,
-            _phantom: PhantomData,
         }
     }
 }
 
-impl<'s, 't, 'f, F> Expander for TypeAstExpander<'s, 't, 'f, F>
+impl<'s, F> Expander for TypeAstExpander<'s, F>
 where
-    F: Iterator<Item = &'f StructField> + Clone,
+    F: Iterator<Item = &'s StructField> + Clone,
 {
     fn expand(&self, base_indent: u16) {
         let mut is_tail = false;
