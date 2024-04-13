@@ -68,3 +68,21 @@ const _%name%Fields: StructField[] = [
 
 #end/message_struct
 "#;
+
+/*
+
+AstExpandeR {
+    expand() {
+        for f in fields {
+            expand_field(f)
+        }
+    }
+
+    expand_field(f) {
+        prim -> print_span(some_indent, prim_inst, empty_scope)
+        msg  -> print_span(some_indent, msg_inst, scope with name of message)
+        arr  -> print_span(some_indent, arr_inst, FieldExpander(arr.of))
+    }
+}
+
+*/

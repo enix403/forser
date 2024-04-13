@@ -4,13 +4,6 @@ use std::io::Write;
 
 use crate::items::{Program, StructDefinition};
 
-// #[derive(Debug, Clone)]
-// struct Line {
-//     indent: usize,
-//     empty: bool,
-//     content: &'t str,
-// }
-
 #[derive(Debug, Clone, Default)]
 pub struct Section<'t> {
     // lines: Vec<Line>,
@@ -91,10 +84,14 @@ impl<'t> Template<'t> {
     }
 
     fn render_struct(&self, struct_: &StructDefinition) {
-        // compile type map
-        // compile type visitor
-        // compile field visitor
-        // compile struct
+        let scope = Scope::new();
+        scope.add_text("name", &struct_.name);
+        scope.add_expander("type_ast", TypeAstExpander::new(&struct_.fields));
+
+        // TODO: compile only once instead of for each new struct
+        let span = TemplateSpan::compile(self.message_struct.body);
+
+        print_span(0, &span, scope);
     }
 }
 
@@ -239,11 +236,28 @@ trait Expander {
 
 enum ScopeValue<'a> {
     Text(&'a str),
-    Expand(Box<dyn Expander>)
+    Expand(Box<dyn Expander>),
 }
 
 struct Scope<'t> {
     map: HashMap<&'t str, ScopeValue<'t>>,
+}
+
+impl<'t> Scope<'t> {
+    fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    fn add_text(&self, name: &str, text: &'t str) {
+        self.map.insert(name, ScopeValue::Text(text));
+    }
+
+    fn add_expander<E: Expander>(&self, name: &str, expander: E) {
+        self.map
+            .insert(name, ScopeValue::Expand(Box::new(expander)));
+    }
 }
 
 fn do_indent(size: u16) {
@@ -253,9 +267,9 @@ fn do_indent(size: u16) {
     }
 }
 
-fn print_span(base_indent: u16, instructions: &Vec<Instruction>, scope: Scope) {
+fn print_span(base_indent: u16, span: &TemplateSpan, scope: Scope) {
     let mut line_indent = 0;
-    for inst in instructions {
+    for inst in span.instructions.iter() {
         match inst {
             Instruction::Newline => {
                 print!("\n");
@@ -273,11 +287,18 @@ fn print_span(base_indent: u16, instructions: &Vec<Instruction>, scope: Scope) {
                 let scope_val = scope.map.get(variable).unwrap();
                 match scope_val {
                     ScopeValue::Text(text) => print!("{}", text),
-                    ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent)
+                    ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
                 }
             }
-            // TODO: fill
-            Instruction::EvaluateMultiple(..) => {}
+            &Instruction::EvaluateMultiple(variable) => {
+                let scope_val = scope.map.get(variable).unwrap();
+                match scope_val {
+                    ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
+                    ScopeValue::Text(..) => {
+                        panic!("a %%multiple%% variable cannot have a single text value")
+                    }
+                }
+            }
         }
     }
 }
