@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::items::TyKind;
 
 use super::scope::Scope;
-use super::span::TemplateSpan;
+use super::span::{TemplateSpan, do_indent};
 
 pub trait Expander {
     fn expand(&self, base_indent: u16);
@@ -11,9 +11,9 @@ pub trait Expander {
 
 #[derive(Clone)]
 pub struct TypeAstSpans<'t> {
-    primitive: TemplateSpan<'t>,
-    message: TemplateSpan<'t>,
-    array: TemplateSpan<'t>,
+    pub primitive: TemplateSpan<'t>,
+    pub message: TemplateSpan<'t>,
+    pub array: TemplateSpan<'t>,
 }
 
 struct SingleTypeAstExpander<'s, 'k, 't> {
@@ -69,7 +69,17 @@ where
     F: Iterator<Item = &'f TyKind> + Clone,
 {
     fn expand(&self, base_indent: u16) {
+        let mut is_tail = false;
+
         for field in self.fields.clone() {
+            if is_tail {
+                print!(",\n");
+                do_indent(base_indent);
+            }
+            else {
+                is_tail = true;
+            }
+
             let inner = SingleTypeAstExpander {
                 spanset: &self.spanset,
                 ty: field,

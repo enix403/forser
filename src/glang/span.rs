@@ -175,7 +175,7 @@ impl<'t> TemplateSpan<'t> {
     }
 }
 
-fn do_indent(size: u16) {
+pub fn do_indent(size: u16) {
     // TODO: optimize
     for _ in 0..size {
         print!(" ");

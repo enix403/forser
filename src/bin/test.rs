@@ -9,7 +9,7 @@ use forser::lexer::Lexer;
 use forser::parser::{ParseError, Parser};
 
 fn get_test_program() -> Program {
-    let file = ForserFile::new("files/one.fr").unwrap();
+    let file = ForserFile::new("files/two.fr").unwrap();
     let mut source = file.source();
     let lex = Lexer::new(&mut source);
 
