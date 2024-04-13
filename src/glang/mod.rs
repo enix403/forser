@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::default::Default;
 use std::io::Write;
 
@@ -229,5 +230,54 @@ impl<'t> TemplateSpan<'t> {
         }
 
         span
+    }
+}
+
+trait Expander {
+    fn expand(&self, base_indent: u16);
+}
+
+enum ScopeValue<'a> {
+    Text(&'a str),
+    Expand(Box<dyn Expander>)
+}
+
+struct Scope<'t> {
+    map: HashMap<&'t str, ScopeValue<'t>>,
+}
+
+fn do_indent(size: u16) {
+    // TODO: optimize
+    for _ in 0..size {
+        print!(" ");
+    }
+}
+
+fn print_span(base_indent: u16, instructions: &Vec<Instruction>, scope: Scope) {
+    let mut line_indent = 0;
+    for inst in instructions {
+        match inst {
+            Instruction::Newline => {
+                print!("\n");
+                line_indent = 0;
+                do_indent(base_indent);
+            }
+            &Instruction::Indent(size) => {
+                line_indent = size;
+                do_indent(size);
+            }
+            Instruction::Literal(val) => {
+                print!("{}", val);
+            }
+            &Instruction::EvaluateSingle(variable) => {
+                let scope_val = scope.map.get(variable).unwrap();
+                match scope_val {
+                    ScopeValue::Text(text) => print!("{}", text),
+                    ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent)
+                }
+            }
+            // TODO: fill
+            Instruction::EvaluateMultiple(..) => {}
+        }
     }
 }

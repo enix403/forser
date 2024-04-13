@@ -29,22 +29,6 @@ fn main() {
 }
 
 static CODE: &'static str = r#"
-#prelude
-
-type TyKind =
-  | { kind: TyKindTag.Primitive }
-  | { kind: TyKindTag.Message; of: MessageClassID }
-  | { kind: TyKindTag.Array; of: TyKind };
-
-type StructField = {
-  name: string;
-  ty: TyKind;
-};
-
-#end/prelude
-
-// -----------------------------------------------------
-
 #types
 
 string = { string }
@@ -76,26 +60,11 @@ array = {{
 
 // -----------------------------------------------------
 
-#field_visitor
-public %name%!: %ty%;
-#end/field_visitor
-
-// -----------------------------------------------------
-
 #message_struct
 
 const _%name%Fields: StructField[] = [
-    %%type_ast/,%%
+    %%type_ast%%
 ];
-
-export class %name% extends StructMessage {
-    %%fields%%
-}
-
-_messageMap.set("%name%", %name%);
-_fieldsMap.set(%name%, _%name%Fields);
-
-/* ================================ */
 
 #end/message_struct
 "#;
