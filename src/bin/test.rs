@@ -68,6 +68,8 @@ const _%name%Fields: StructField[] = [
     %%type_ast%%
 ];
 
+
+
 #end/message_struct
 "#;
 

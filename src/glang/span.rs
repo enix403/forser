@@ -20,7 +20,9 @@ pub struct TemplateSpan<'t> {
 
 impl<'t> TemplateSpan<'t> {
     pub fn empty() -> Self {
-        Self { instructions: vec![] }
+        Self {
+            instructions: vec![],
+        }
     }
 
     pub fn compile(content: &'t str) -> TemplateSpan {
@@ -28,7 +30,7 @@ impl<'t> TemplateSpan<'t> {
             instructions: vec![],
         };
 
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, Debug)]
         enum State {
             Indenting,
             Literal,
@@ -129,9 +131,13 @@ impl<'t> TemplateSpan<'t> {
                 if !lit.is_empty() {
                     span.instructions.push(Instruction::Literal(lit));
                 }
+            } else if let State::Indenting = state {
+                if indent > 0 {
+                    span.instructions.push(Instruction::Indent(indent));
+                }
             } else {
                 // syntax error
-                panic!("Syntax error in TemplateSpan");
+                panic!("Syntax error in TemplateSpan {:?}", state);
             }
         }
 
@@ -155,14 +161,18 @@ impl<'t> TemplateSpan<'t> {
                     print!("{}", val);
                 }
                 &Instruction::EvaluateSingle(variable) => {
-                    let scope_val = scope.map.get(variable).unwrap();
+                    let scope_val = scope.map.get(variable).unwrap_or_else(|| {
+                        panic!("Unknown variable %{}%", variable);
+                    });
                     match scope_val {
                         ScopeValue::Text(text) => print!("{}", text),
                         ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
                     }
                 }
                 &Instruction::EvaluateMultiple(variable) => {
-                    let scope_val = scope.map.get(variable).unwrap();
+                    let scope_val = scope.map.get(variable).unwrap_or_else(|| {
+                        panic!("Unknown variable %%{}%%", variable);
+                    });
                     match scope_val {
                         ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
                         ScopeValue::Text(..) => {
@@ -181,4 +191,3 @@ pub fn do_indent(size: u16) {
         print!(" ");
     }
 }
-

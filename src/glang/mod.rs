@@ -86,31 +86,31 @@ impl<'t> Template<'t> {
         // write prelude
         println!("{}", self.prelude.body);
 
+        let mut spanset = TypeAstSpans {
+            primitive: TemplateSpan::empty(),
+            message: TemplateSpan::empty(),
+            array: TemplateSpan::empty(),
+            main: TemplateSpan::empty(),
+        };
+
+        stream_parse_visitors(self.type_visitor.body, |name, body| {
+            let span = TemplateSpan::compile(body);
+            match name {
+                "primitive" => spanset.primitive = span,
+                "message" => spanset.message = span,
+                "array" => spanset.array = span,
+                "main" => spanset.main = span,
+                _ => {}
+            }
+        });
+
         for struct_ in program.structs.iter() {
-            let mut spanset = TypeAstSpans {
-                primitive: TemplateSpan::empty(),
-                message: TemplateSpan::empty(),
-                array: TemplateSpan::empty(),
-                main: TemplateSpan::empty(),
-            };
-
-            stream_parse_visitors(self.type_visitor.body, |name, body| {
-                let span = TemplateSpan::compile(body);
-                match name {
-                    "primitive" => spanset.primitive = span,
-                    "message" => spanset.message = span,
-                    "array" => spanset.array = span,
-                    "main" => spanset.main = span,
-                    _ => {}
-                }
-            });
-
             let mut scope = Scope::new()
                 /* ... */
                 .add_text("name", &struct_.name)
                 .add_expander(
                     "type_ast",
-                    TypeAstExpander::new(spanset, struct_.fields.iter()),
+                    TypeAstExpander::new(&spanset, struct_.fields.iter()),
                 );
 
             // TODO: compile only once instead of for each new struct

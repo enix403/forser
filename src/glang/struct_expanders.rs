@@ -46,14 +46,14 @@ impl<'s, 'k, 't> Expander for SingleTypeAstExpander<'s, 'k, 't> {
     }
 }
 
-pub struct TypeAstExpander<'t, 'f, F> {
-    spanset: TypeAstSpans<'t>,
+pub struct TypeAstExpander<'s, 't, 'f, F> {
+    spanset: &'s TypeAstSpans<'t>,
     fields: F,
     _phantom: PhantomData<&'f ()>,
 }
 
-impl<'t, 'f, F> TypeAstExpander<'t, 'f, F> {
-    pub fn new(spanset: TypeAstSpans<'t>, fields: F) -> Self {
+impl<'s, 't, 'f, F> TypeAstExpander<'s, 't, 'f, F> {
+    pub fn new(spanset: &'s TypeAstSpans<'t>, fields: F) -> Self {
         Self {
             spanset,
             fields,
@@ -62,7 +62,7 @@ impl<'t, 'f, F> TypeAstExpander<'t, 'f, F> {
     }
 }
 
-impl<'t, 'f, F> Expander for TypeAstExpander<'t, 'f, F>
+impl<'s, 't, 'f, F> Expander for TypeAstExpander<'s, 't, 'f, F>
 where
     F: Iterator<Item = &'f StructField> + Clone,
 {
@@ -78,7 +78,7 @@ where
             }
 
             let field_ast_expander = SingleTypeAstExpander {
-                spanset: &self.spanset,
+                spanset: self.spanset,
                 ty: &field.datatype,
             };
 
