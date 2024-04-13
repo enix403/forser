@@ -5,8 +5,8 @@ use std::io::Write;
 use crate::items::{Program, StructDefinition};
 
 pub mod expanders;
-pub mod span;
 pub mod scope;
+pub mod span;
 
 use expanders::*;
 use scope::Scope;
@@ -86,10 +86,10 @@ impl<'t> Template<'t> {
         println!("{}", self.prelude.body);
 
         for struct_ in program.structs.iter() {
-            let mut scope = Scope::new();
-            scope.add_text("name", &struct_.name);
-            // scope.add_expander("type_ast", TypeAstExpander::new(&struct_.fields));
-            scope.add_expander("type_ast", TypeAstExpander::new());
+
+            let mut scope = Scope::new()
+                .add_text("name", &struct_.name);
+                // .add_expander("type_ast", TypeAstExpander::new());
 
             // TODO: compile only once instead of for each new struct
             let span = TemplateSpan::compile(self.message_struct.body);
@@ -100,4 +100,3 @@ impl<'t> Template<'t> {
         }
     }
 }
-
