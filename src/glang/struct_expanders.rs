@@ -2,12 +2,9 @@ use std::marker::PhantomData;
 
 use crate::items::{StructField, TyKind};
 
+use super::expander::Expander;
 use super::scope::Scope;
 use super::span::{do_indent, TemplateSpan};
-
-pub trait Expander {
-    fn expand(&self, base_indent: u16);
-}
 
 #[derive(Clone)]
 pub struct TypeAstSpans<'t> {
@@ -90,7 +87,7 @@ where
                 Scope::new()
                     .add_text("name", &field.name)
                     .add_expander("ast", field_ast_expander),
-            )
+            );
         }
     }
 }

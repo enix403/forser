@@ -4,13 +4,14 @@ use std::io::Write;
 
 use crate::items::{Program, StructDefinition};
 
-pub mod expanders;
+pub mod expander;
 pub mod scope;
 pub mod span;
+pub mod struct_expanders;
 
-use expanders::*;
 use scope::Scope;
 use span::TemplateSpan;
+use struct_expanders::{TypeAstExpander, TypeAstSpans};
 
 #[derive(Debug, Clone, Default)]
 pub struct Section<'t> {

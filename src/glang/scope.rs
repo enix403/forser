@@ -1,4 +1,4 @@
-use super::expanders::Expander;
+use super::expander::Expander;
 use std::collections::HashMap;
 
 pub enum ScopeValue<'v, 't> {
