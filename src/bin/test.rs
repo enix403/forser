@@ -31,12 +31,12 @@ fn main() {
 static CODE: &'static str = r#"
 #types
 
-string = { string }
-int    = { number }
-float  = { float }
-bool   = { boolean }
-array  = { Array<%T%> }
-null   = { %T% | null }
+string { string }
+int { number }
+float { float }
+bool { boolean }
+array { Array<%T%> }
+null { %T% | null }
 
 #end/types
 
@@ -44,14 +44,14 @@ null   = { %T% | null }
 
 #type_visitor
 
-primitive = {{ kind: TyKindTag.Primitive }}
+primitive {{ kind: TyKindTag.Primitive }}
 
-message = {{
+message {{
     kind: TyKindTag.Message,
     of: "%name%"
 }}
 
-array = {{
+array {{
     kind: TyKindTag.Array,
     of: %of%
 }}

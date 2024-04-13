@@ -19,6 +19,10 @@ pub struct TemplateSpan<'t> {
 }
 
 impl<'t> TemplateSpan<'t> {
+    pub fn empty() -> Self {
+        Self { instructions: vec![] }
+    }
+
     pub fn compile(content: &'t str) -> TemplateSpan {
         let mut span = TemplateSpan {
             instructions: vec![],

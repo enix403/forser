@@ -86,10 +86,8 @@ impl<'t> Template<'t> {
         println!("{}", self.prelude.body);
 
         for struct_ in program.structs.iter() {
-
-            let mut scope = Scope::new()
-                .add_text("name", &struct_.name);
-                // .add_expander("type_ast", TypeAstExpander::new());
+            let mut scope = Scope::new().add_text("name", &struct_.name);
+            // .add_expander("type_ast", TypeAstExpander::new());
 
             // TODO: compile only once instead of for each new struct
             let span = TemplateSpan::compile(self.message_struct.body);
@@ -98,5 +96,49 @@ impl<'t> Template<'t> {
 
             print!("\n");
         }
+    }
+}
+
+fn stream_visitors<'t, F>(mut source: &'t str, mut receiver: F)
+where
+    F: FnMut(&'t str, &'t str)
+{
+
+    loop {
+        source = source.trim();
+
+        if source.is_empty() {
+            break;
+        }
+
+        let (name, rem) = source.split_at(source.find(' ').unwrap());
+
+        let rem = rem.trim_start().strip_prefix('{').unwrap();
+
+        // at this point rem is something like this
+        // ..target string..}..extra string...
+
+        let mut brackets_open = 1;
+        let mut end_index = None;
+
+        for (i, c) in rem.char_indices() {
+            if c == '}' {
+                brackets_open -= 1;
+                if brackets_open == 0 {
+                    end_index = Some(i);
+                    break;
+                }
+            }
+            else if c == '{' {
+                brackets_open += 1;
+            }
+        }
+
+        let (body, rem) = rem.split_at(end_index.unwrap());
+
+        receiver(name, body);
+
+        // Remove the trailing (or now, leading) closing bracket after the parsed body
+        source = rem.strip_prefix('}').unwrap()
     }
 }
