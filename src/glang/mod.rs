@@ -90,22 +90,27 @@ impl<'t> Template<'t> {
                 primitive: TemplateSpan::empty(),
                 message: TemplateSpan::empty(),
                 array: TemplateSpan::empty(),
+                main: TemplateSpan::empty(),
             };
 
-            stream_visitors(self.type_visitor.body, |name, body| {
+            stream_parse_visitors(self.type_visitor.body, |name, body| {
                 let span = TemplateSpan::compile(body);
                 match name {
                     "primitive" => spanset.primitive = span,
                     "message" => spanset.message = span,
                     "array" => spanset.array = span,
+                    "main" => spanset.main = span,
                     _ => {}
                 }
             });
 
-            let mut scope = Scope::new().add_text("name", &struct_.name).add_expander(
-                "type_ast",
-                TypeAstExpander::new(spanset, struct_.fields.iter().map(|f| &f.datatype)),
-            );
+            let mut scope = Scope::new()
+                /* ... */
+                .add_text("name", &struct_.name)
+                .add_expander(
+                    "type_ast",
+                    TypeAstExpander::new(spanset, struct_.fields.iter()),
+                );
 
             // TODO: compile only once instead of for each new struct
             let span = TemplateSpan::compile(self.message_struct.body);
@@ -117,7 +122,7 @@ impl<'t> Template<'t> {
     }
 }
 
-fn stream_visitors<'t, F>(mut source: &'t str, mut receiver: F)
+fn stream_parse_visitors<'t, F>(mut source: &'t str, mut receiver: F)
 where
     F: FnMut(&'t str, &'t str),
 {
@@ -152,7 +157,7 @@ where
 
         let (body, rem) = rem.split_at(end_index.unwrap());
 
-        receiver(name, body);
+        receiver(name, body.trim());
 
         // Remove the trailing (or now, leading) closing bracket after the parsed body
         source = rem.strip_prefix('}').unwrap()

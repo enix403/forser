@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use crate::items::TyKind;
+use crate::items::{StructField, TyKind};
 
 use super::scope::Scope;
-use super::span::{TemplateSpan, do_indent};
+use super::span::{do_indent, TemplateSpan};
 
 pub trait Expander {
     fn expand(&self, base_indent: u16);
@@ -14,6 +14,7 @@ pub struct TypeAstSpans<'t> {
     pub primitive: TemplateSpan<'t>,
     pub message: TemplateSpan<'t>,
     pub array: TemplateSpan<'t>,
+    pub main: TemplateSpan<'t>,
 }
 
 struct SingleTypeAstExpander<'s, 'k, 't> {
@@ -66,7 +67,7 @@ impl<'t, 'f, F> TypeAstExpander<'t, 'f, F> {
 
 impl<'t, 'f, F> Expander for TypeAstExpander<'t, 'f, F>
 where
-    F: Iterator<Item = &'f TyKind> + Clone,
+    F: Iterator<Item = &'f StructField> + Clone,
 {
     fn expand(&self, base_indent: u16) {
         let mut is_tail = false;
@@ -75,17 +76,21 @@ where
             if is_tail {
                 print!(",\n");
                 do_indent(base_indent);
-            }
-            else {
+            } else {
                 is_tail = true;
             }
 
-            let inner = SingleTypeAstExpander {
+            let field_ast_expander = SingleTypeAstExpander {
                 spanset: &self.spanset,
-                ty: field,
+                ty: &field.datatype,
             };
 
-            inner.expand(base_indent);
+            self.spanset.main.print(
+                base_indent,
+                Scope::new()
+                    .add_text("name", &field.name)
+                    .add_expander("ast", field_ast_expander),
+            )
         }
     }
 }
