@@ -19,13 +19,13 @@ fn get_test_program() -> Program {
 }
 
 fn main() {
-    // let template = Template::compile(CODE);
-    // let program = get_test_program();
+    let template = Template::compile(CODE);
+    let program = get_test_program();
 
-    // template.render(&program);
+    template.print(&program);
 
-    let span = TemplateSpan::compile("{\n    kind: %%TyKindTag%%.Message,\n    of: \"%name%\"\n}");
-    println!("{:#?}", span)
+    // let span = span::TemplateSpan::compile("{\n    kind: %%TyKindTag%%.Message,\n    of: \"%name%\"\n}");
+    // println!("{:#?}", span)
 }
 
 static CODE: &'static str = r#"
