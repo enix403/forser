@@ -7,19 +7,19 @@ use super::scope::Scope;
 use super::span::{do_indent, TemplateSpan};
 
 #[derive(Clone)]
-pub struct TypeAstSpans<'t> {
-    pub primitive: TemplateSpan<'t>,
-    pub message: TemplateSpan<'t>,
-    pub array: TemplateSpan<'t>,
-    pub main: TemplateSpan<'t>,
+pub struct TypeAstSpans<'s> {
+    pub primitive: TemplateSpan<'s>,
+    pub message: TemplateSpan<'s>,
+    pub array: TemplateSpan<'s>,
+    pub main: TemplateSpan<'s>,
 }
 
-struct SingleTypeAstExpander<'s, 'k, 't> {
-    spanset: &'s TypeAstSpans<'t>,
-    ty: &'k TyKind,
+struct SingleTypeAstExpander<'s> {
+    spanset: &'s TypeAstSpans<'s>,
+    ty: &'s TyKind,
 }
 
-impl<'s, 'k, 't> Expander for SingleTypeAstExpander<'s, 'k, 't> {
+impl<'s> Expander for SingleTypeAstExpander<'s> {
     fn expand(&self, base_indent: u16) {
         match self.ty {
             TyKind::Primitive(..) => self.spanset.primitive.print(base_indent, Scope::new()),
