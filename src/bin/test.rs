@@ -37,6 +37,7 @@ float { float }
 bool { boolean }
 array { Array<%T%> }
 null { %T% | null }
+struct { %T% }
 
 #end/types
 
@@ -62,13 +63,21 @@ main {{ name: "%name%", ty: %ast% }}
 
 // -----------------------------------------------------
 
+#field_visitor
+public %name%!: %ty%;
+#end/field_visitor
+
+// -----------------------------------------------------
+
 #message_struct
 
 const _%name%Fields: StructField[] = [
     %%type_ast%%
 ];
 
-
+export class %name% extends StructMessage {
+    %%fields%%
+}
 
 #end/message_struct
 "#;

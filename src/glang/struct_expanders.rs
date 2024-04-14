@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::items::{StructField, TyKind};
+use crate::items::{PrimitiveType, StructField, TyKind};
 
 use super::expander::Expander;
 use super::scope::Scope;
@@ -53,10 +53,7 @@ pub struct TypeAstExpander<'s, F> {
 
 impl<'s, F> TypeAstExpander<'s, F> {
     pub fn new(spanset: &'s TypeAstSpans<'s>, fields: F) -> Self {
-        Self {
-            spanset,
-            fields,
-        }
+        Self { spanset, fields }
     }
 }
 
@@ -68,6 +65,7 @@ where
         let mut is_tail = false;
 
         for field in self.fields.clone() {
+            // TODO: integrate options
             if is_tail {
                 print!(",\n");
                 do_indent(base_indent);
@@ -85,6 +83,113 @@ where
                 Scope::new()
                     .add_text("name", &field.name)
                     .add_expander("ast", field_ast_expander),
+            );
+        }
+    }
+}
+
+/* =============================================================================================== */
+
+pub struct FieldTypeSpans<'s> {
+    pub string: TemplateSpan<'s>,
+    pub int: TemplateSpan<'s>,
+    pub float: TemplateSpan<'s>,
+    pub bool_: TemplateSpan<'s>,
+    pub array: TemplateSpan<'s>,
+    pub null: TemplateSpan<'s>,
+    pub struct_: TemplateSpan<'s>,
+}
+
+pub struct FieldTypeExpander<'s> {
+    spanset: &'s FieldTypeSpans<'s>,
+    ty: &'s TyKind,
+}
+
+impl<'s> Expander for FieldTypeExpander<'s> {
+    fn expand(&self, base_indent: u16) {
+        match self.ty {
+            TyKind::Primitive(prim) => match prim {
+                PrimitiveType::String => self.spanset.string.print(base_indent, Scope::new()),
+                PrimitiveType::Int => self.spanset.int.print(base_indent, Scope::new()),
+                PrimitiveType::Float => self.spanset.float.print(base_indent, Scope::new()),
+                PrimitiveType::Bool => self.spanset.bool_.print(base_indent, Scope::new()),
+            },
+
+            TyKind::UserDefined(name) => self
+                .spanset
+                .struct_
+                .print(base_indent, Scope::new().add_text("T", &name)),
+
+            TyKind::Nullable(inner) => self.spanset.struct_.print(
+                base_indent,
+                Scope::new().add_expander(
+                    "T",
+                    FieldTypeExpander {
+                        spanset: self.spanset,
+                        ty: inner.as_ref(),
+                    },
+                ),
+            ),
+
+            TyKind::Array(inner) => self.spanset.array.print(
+                base_indent,
+                Scope::new().add_expander(
+                    "T",
+                    FieldTypeExpander {
+                        spanset: self.spanset,
+                        ty: inner.as_ref(),
+                    },
+                ),
+            ),
+        }
+    }
+}
+
+pub struct FieldsExpander<'s, F> {
+    fields: F,
+    spanset: &'s FieldTypeSpans<'s>,
+    field_body_span: &'s TemplateSpan<'s>,
+}
+
+impl<'s, F> FieldsExpander<'s, F> {
+    pub fn new(
+        fields: F,
+        spanset: &'s FieldTypeSpans<'s>,
+        field_body_span: &'s TemplateSpan<'s>,
+    ) -> Self {
+        Self {
+            spanset,
+            fields,
+            field_body_span,
+        }
+    }
+}
+
+impl<'s, F> Expander for FieldsExpander<'s, F>
+where
+    F: Iterator<Item = &'s StructField> + Clone,
+{
+    fn expand(&self, base_indent: u16) {
+        let mut is_tail = false;
+
+        for field in self.fields.clone() {
+            if is_tail {
+                print!("\n");
+                do_indent(base_indent);
+            } else {
+                is_tail = true;
+            }
+
+            let field_type_expander = FieldTypeExpander {
+                spanset: self.spanset,
+                ty: &field.datatype,
+            };
+
+            self.field_body_span.print(
+                base_indent,
+                Scope::new()
+                    .add_text("name", &field.name)
+                    .add_expander("ty", field_type_expander),
             );
         }
     }

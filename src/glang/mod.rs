@@ -11,7 +11,7 @@ pub mod struct_expanders;
 
 use scope::Scope;
 use span::TemplateSpan;
-use struct_expanders::{TypeAstExpander, TypeAstSpans};
+use struct_expanders::{FieldTypeSpans, FieldsExpander, TypeAstExpander, TypeAstSpans};
 
 #[derive(Debug, Clone, Default)]
 pub struct Section<'t> {
@@ -86,25 +86,59 @@ impl<'t> Template<'t> {
         // write prelude
         println!("{}", self.prelude.body);
 
-        let mut spanset = TypeAstSpans {
-            primitive: TemplateSpan::empty(),
-            message: TemplateSpan::empty(),
-            array: TemplateSpan::empty(),
-            main: TemplateSpan::empty(),
+        let type_ast_spanset = {
+            let mut spanset = TypeAstSpans {
+                primitive: TemplateSpan::empty(),
+                message: TemplateSpan::empty(),
+                array: TemplateSpan::empty(),
+                main: TemplateSpan::empty(),
+            };
+
+            stream_parse_visitors(self.type_visitor.body, |name, body| {
+                let span = TemplateSpan::compile(body);
+                match name {
+                    "primitive" => spanset.primitive = span,
+                    "message" => spanset.message = span,
+                    "array" => spanset.array = span,
+                    "main" => spanset.main = span,
+                    _ => {}
+                }
+            });
+            spanset
         };
 
-        stream_parse_visitors(self.type_visitor.body, |name, body| {
-            let span = TemplateSpan::compile(body);
-            match name {
-                "primitive" => spanset.primitive = span,
-                "message" => spanset.message = span,
-                "array" => spanset.array = span,
-                "main" => spanset.main = span,
-                _ => {}
-            }
-        });
-
         let message_body_span = TemplateSpan::compile(self.message_struct.body);
+
+        /* ------------------- */
+
+        let field_spanset = {
+            let mut spanset = FieldTypeSpans {
+                string: TemplateSpan::empty(),
+                int: TemplateSpan::empty(),
+                float: TemplateSpan::empty(),
+                bool_: TemplateSpan::empty(),
+                array: TemplateSpan::empty(),
+                null: TemplateSpan::empty(),
+                struct_: TemplateSpan::empty(),
+            };
+
+            stream_parse_visitors(self.types.body, |name, body| {
+                let span = TemplateSpan::compile(body);
+                match name {
+                    "string" => spanset.string = span,
+                    "int" => spanset.int = span,
+                    "float" => spanset.float = span,
+                    "bool_" => spanset.bool_ = span,
+                    "array" => spanset.array = span,
+                    "null" => spanset.null = span,
+                    "struct" => spanset.struct_ = span,
+                    _ => {}
+                }
+            });
+            spanset
+        };
+
+        let field_body_span = TemplateSpan::compile(self.field_visitor.body);
 
         for struct_ in program.structs.iter() {
             let scope = Scope::new()
@@ -112,7 +146,11 @@ impl<'t> Template<'t> {
                 .add_text("name", &struct_.name)
                 .add_expander(
                     "type_ast",
-                    TypeAstExpander::new(&spanset, struct_.fields.iter()),
+                    TypeAstExpander::new(&type_ast_spanset, struct_.fields.iter()),
+                )
+                .add_expander(
+                    "fields",
+                    FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span),
                 );
 
             message_body_span.print(0, scope);
