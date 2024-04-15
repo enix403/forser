@@ -41,6 +41,7 @@ impl<'t> TemplateSpan<'t> {
             Indenting,
             Literal,
             Variable,
+            Closed,
         }
 
         let mut is_tail = false;
@@ -59,7 +60,7 @@ impl<'t> TemplateSpan<'t> {
             let mut chars = line.char_indices().collect::<Vec<_>>();
             let num_chars = chars.len();
 
-            let mut i = 0;
+            let mut i: usize = 0;
 
             while i < num_chars {
                 let (index, c) = chars[i];
@@ -117,15 +118,19 @@ impl<'t> TemplateSpan<'t> {
                             // ignore the starting %
                             let var_start = start + percentage_size;
 
-                            if trailing {
-                                assert_eq!(chars[i + 3].1, '%');
-                                // TODO: Very unreadable
-                                start = chars[(i + 4).min(num_chars - 1)].0;
-                                i = i + 4;
-                            } else {
-                                assert_eq!(chars[i + 2].1, '%');
-                                start = chars[(i + 3).min(num_chars - 1)].0;
-                                i = i + 3;
+                            // Update the start before as it might later become State::Closed
+                            state = State::Literal;
+
+                            {
+                                let new_index = if trailing { i + 4 } else { i + 3 };
+
+                                assert_eq!(chars[new_index - 1].1, '%');
+                                if new_index >= num_chars {
+                                    state = State::Closed;
+                                } else {
+                                    start = chars[new_index].0;
+                                }
+                                i = new_index;
                             }
 
                             span.instructions.push(Instruction::Evaluate {
@@ -135,8 +140,6 @@ impl<'t> TemplateSpan<'t> {
                                     trailing,
                                 },
                             });
-
-                            state = State::Literal;
                         };
                     }
 
@@ -146,7 +149,8 @@ impl<'t> TemplateSpan<'t> {
                 i += 1;
             }
 
-            if let State::Literal = state {
+            if let State::Closed = state {
+            } else if let State::Literal = state {
                 let lit = &line[start..];
                 if !lit.is_empty() {
                     span.instructions.push(Instruction::Literal(lit));
@@ -176,13 +180,11 @@ impl<'t> TemplateSpan<'t> {
         });
         match scope_val {
             ScopeValue::Text(text) => print!("{}", text),
-            ScopeValue::Expand(expander) => {
-                loop {
-                    if !expander.expand_next(indent) {
-                        break;
-                    }
+            ScopeValue::Expand(expander) => loop {
+                if !expander.expand_next(indent) {
+                    break;
                 }
-            }
+            },
         }
     }
 
