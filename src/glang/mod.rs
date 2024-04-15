@@ -82,9 +82,9 @@ impl<'t> Template<'t> {
         template
     }
 
-    pub fn print(&self, program: &Program) {
+    pub fn print<W: Write>(&self, program: &Program, mut dest: W) {
         // write prelude
-        println!("{}", self.prelude.body);
+        writeln!(&mut dest, "{}", self.prelude.body).unwrap();
 
         let type_ast_spanset = {
             let mut spanset = TypeAstSpans {
@@ -146,14 +146,14 @@ impl<'t> Template<'t> {
                 .add_text("name", &struct_.name)
                 .add_expander(
                     "type_ast",
-                    TypeAstExpander::new(&type_ast_spanset, struct_.fields.iter()),
+                    TypeAstExpander::new(&type_ast_spanset, struct_.fields.iter(), &mut dest),
                 )
                 .add_expander(
                     "fields",
-                    FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span),
+                    FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span, &mut dest),
                 );
 
-            message_body_span.print(0, scope);
+            message_body_span.print(&mut dest, 0, scope);
 
             print!("\n");
         }

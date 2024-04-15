@@ -1,4 +1,5 @@
 use super::scope::{Scope, ScopeValue};
+use std::io::{self, Write};
 
 #[derive(Debug, Clone, Default)]
 pub struct ExpandOptions {
@@ -169,67 +170,80 @@ impl<'t> TemplateSpan<'t> {
         span
     }
 
-    fn evaluate_variable(
+    fn evaluate_variable<W: Write>(
         &self,
+        dest: &mut W,
         indent: u16,
         variable: &str,
         scope: &mut Scope,
         opts: ExpandOptions,
-    ) {
+    ) -> io::Result<()> {
         let scope_val = scope.map.get_mut(variable).unwrap_or_else(|| {
             panic!("Unknown variable %{}%", variable);
         });
+
         match scope_val {
-            ScopeValue::Text(text) => print!("{}", text),
+            ScopeValue::Text(text) => write!(dest, "{}", text)?,
             ScopeValue::Expand(expander) => {
                 let total = expander.count();
 
                 for index in 0..total {
                     if index != 0 {
                         if let Some(delim) = opts.delimeter {
-                            print!("{}", delim);
+                            write!(dest, "{}", delim)?;
                         }
-                        print!("\n");
-                        do_indent(indent);
+                        write!(dest, "\n")?;
+                        do_indent(indent, dest)?;
                     }
-                    
+
                     expander.expand_next(indent);
                 }
 
                 if opts.trailing && opts.delimeter.is_some() {
-                    print!("{}", opts.delimeter.unwrap());
+                    write!(dest, "{}", opts.delimeter.unwrap())?;
                 }
             }
         }
+
+        Ok(())
     }
 
-    pub fn print(&self, base_indent: u16, mut scope: Scope) {
+    pub fn print<W: Write>(
+        &self,
+        dest: &mut W,
+        base_indent: u16,
+        mut scope: Scope,
+    ) -> io::Result<()> {
         let mut line_indent = 0;
         for inst in self.instructions.iter().cloned() {
             match inst {
                 Instruction::Newline => {
-                    print!("\n");
+                    write!(dest, "\n")?;
                     line_indent = 0;
-                    do_indent(base_indent);
+                    do_indent(base_indent, dest)?;
                 }
                 Instruction::Indent(size) => {
                     line_indent = size;
-                    do_indent(size);
+                    do_indent(size, dest)?;
                 }
                 Instruction::Literal(val) => {
-                    print!("{}", val);
+                    write!(dest, "{}", val)?;
                 }
                 Instruction::Evaluate { var, opts } => {
-                    self.evaluate_variable(base_indent + line_indent, var, &mut scope, opts)
+                    self.evaluate_variable(dest, base_indent + line_indent, var, &mut scope, opts)?
                 }
             }
         }
+
+        Ok(())
     }
 }
 
-pub fn do_indent(size: u16) {
+fn do_indent<W: Write>(size: u16, dest: &mut W) -> io::Result<()> {
     // TODO: optimize
     for _ in 0..size {
-        print!(" ");
+        write!(dest, " ")?;
     }
+
+    Ok(())
 }
