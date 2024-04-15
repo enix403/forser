@@ -1,5 +1,13 @@
 use super::scope::{Scope, ScopeValue};
 
+#[derive(Debug, Clone, Default)]
+pub struct MultiVariableOptions {
+    // The delimeter between items emitted from this (multi) variable
+    delimeter: char,
+    // Should the delimeter be emitted after the last item ?
+    trailing: bool,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Instruction<'t> {
     Newline,
@@ -49,10 +57,11 @@ impl<'t> TemplateSpan<'t> {
             let mut state = State::Indenting;
 
             let mut chars = line.char_indices().collect::<Vec<_>>();
-
+            let num_chars = chars.len();
 
             let mut i = 0;
-            while i < chars.len() {
+
+            while i < num_chars {
                 let (index, c) = chars[i];
 
                 match (state, c) {
@@ -96,7 +105,30 @@ impl<'t> TemplateSpan<'t> {
 
                             state = State::Literal;
                             start = index + percentage_size;
-                        }
+                        } else if c == '/' {
+                            // options
+                            let (_, delim) = chars[i + 1];
+                            let trailing = chars[i + 2].1 == '+';
+
+                            // ignore the starting %
+                            let var_start = start + percentage_size;
+
+                            if trailing {
+                                assert_eq!(chars[i + 3].1, '%');
+                                // TODO: Very unreadable
+                                start = chars[(i + 4).min(num_chars - 1)].0;
+                                i = i + 4;
+                            } else {
+                                assert_eq!(chars[i + 2].1, '%');
+                                start = chars[(i + 3).min(num_chars - 1)].0;
+                                i = i + 3;
+                            }
+
+                            span.instructions
+                                .push(Instruction::Evaluate(&line[var_start..index]));
+
+                            state = State::Literal;
+                        };
                     }
 
                     _ => (),
@@ -104,7 +136,6 @@ impl<'t> TemplateSpan<'t> {
 
                 i += 1;
             }
-
 
             if let State::Literal = state {
                 let lit = &line[start..];
@@ -149,17 +180,6 @@ impl<'t> TemplateSpan<'t> {
                         ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
                     }
                 }
-                // &Instruction::EvaluateMultiple(variable) => {
-                //     let scope_val = scope.map.get(variable).unwrap_or_else(|| {
-                //         panic!("Unknown variable %%{}%%", variable);
-                //     });
-                //     match scope_val {
-                //         ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
-                //         ScopeValue::Text(..) => {
-                //             panic!("a %%multiple%% variable cannot have a single text value")
-                //         }
-                //     }
-                // }
             }
         }
     }
