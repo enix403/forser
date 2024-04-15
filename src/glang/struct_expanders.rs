@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::items::{PrimitiveType, StructField, TyKind};
 
-use super::expander::{Expander, MultiVariableOptions};
+use super::expander::Expander;
 use super::scope::Scope;
 use super::span::{do_indent, TemplateSpan};
 
@@ -20,7 +20,7 @@ struct SingleTypeAstExpander<'s> {
 }
 
 impl<'s> Expander for SingleTypeAstExpander<'s> {
-    fn expand(&self, base_indent: u16) {
+    fn expand_next(&mut self, base_indent: u16) -> bool {
         match self.ty {
             TyKind::Primitive(..) => self.spanset.primitive.print(base_indent, Scope::new()),
             TyKind::UserDefined(ref name) => self
@@ -37,12 +37,16 @@ impl<'s> Expander for SingleTypeAstExpander<'s> {
                     },
                 ),
             ),
-            TyKind::Nullable(ref inner) => SingleTypeAstExpander {
-                spanset: self.spanset,
-                ty: inner.as_ref(),
+            TyKind::Nullable(ref inner) => {
+                SingleTypeAstExpander {
+                    spanset: self.spanset,
+                    ty: inner.as_ref(),
+                }
+                .expand_next(base_indent);
             }
-            .expand(base_indent),
         }
+
+        return false;
     }
 }
 
@@ -61,18 +65,8 @@ impl<'s, F> Expander for TypeAstExpander<'s, F>
 where
     F: Iterator<Item = &'s StructField> + Clone,
 {
-    fn expand(&self, base_indent: u16) {
-        let mut is_tail = false;
-
-        for field in self.fields.clone() {
-            // TODO: integrate options
-            if is_tail {
-                print!(",\n");
-                do_indent(base_indent);
-            } else {
-                is_tail = true;
-            }
-
+    fn expand_next(&mut self, base_indent: u16) -> bool {
+        if let Some(field) = self.fields.next() {
             let field_ast_expander = SingleTypeAstExpander {
                 spanset: self.spanset,
                 ty: &field.datatype,
@@ -84,6 +78,10 @@ where
                     .add_text("name", &field.name)
                     .add_expander("ast", field_ast_expander),
             );
+
+            return true;
+        } else {
+            return false;
         }
     }
 }
@@ -106,7 +104,7 @@ pub struct FieldTypeExpander<'s> {
 }
 
 impl<'s> Expander for FieldTypeExpander<'s> {
-    fn expand(&self, base_indent: u16) {
+    fn expand_next(&mut self, base_indent: u16) -> bool {
         match self.ty {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveType::String => self.spanset.string.print(base_indent, Scope::new()),
@@ -142,6 +140,8 @@ impl<'s> Expander for FieldTypeExpander<'s> {
                 ),
             ),
         }
+
+        return false;
     }
 }
 
@@ -169,16 +169,16 @@ impl<'s, F> Expander for FieldsExpander<'s, F>
 where
     F: Iterator<Item = &'s StructField> + Clone,
 {
-    fn expand(&self, base_indent: u16) {
-        let mut is_tail = false;
+    fn expand_next(&mut self, base_indent: u16) -> bool {
+        // let mut is_tail = false;
 
-        for field in self.fields.clone() {
-            if is_tail {
-                print!("\n");
-                do_indent(base_indent);
-            } else {
-                is_tail = true;
-            }
+        if let Some(field) = self.fields.next() {
+            // if is_tail {
+            //     print!("\n");
+            //     do_indent(base_indent);
+            // } else {
+            //     is_tail = true;
+            // }
 
             let field_type_expander = FieldTypeExpander {
                 spanset: self.spanset,
@@ -191,6 +191,10 @@ where
                     .add_text("name", &field.name)
                     .add_expander("ty", field_type_expander),
             );
+
+            return true;
+        } else {
+            return false;
         }
     }
 }

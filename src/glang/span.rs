@@ -1,14 +1,14 @@
 use super::scope::{Scope, ScopeValue};
 
 #[derive(Debug, Clone, Default)]
-pub struct MultiVariableOptions {
+pub struct ExpandOptions {
     // The delimeter between items emitted from this (multi) variable
-    delimeter: char,
+    delimeter: Option<char>,
     // Should the delimeter be emitted after the last item ?
     trailing: bool,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Instruction<'t> {
     Newline,
 
@@ -16,7 +16,7 @@ pub enum Instruction<'t> {
 
     Literal(&'t str),
 
-    Evaluate(&'t str),
+    Evaluate { var: &'t str, opts: ExpandOptions },
 }
 
 #[derive(Clone, Debug)]
@@ -101,13 +101,17 @@ impl<'t> TemplateSpan<'t> {
                             start += percentage_size;
 
                             span.instructions
-                                .push(Instruction::Evaluate(&line[start..index]));
+                                // .push(Instruction::Evaluate(&line[start..index]));
+                                .push(Instruction::Evaluate {
+                                    var: &line[start..index],
+                                    opts: ExpandOptions::default(),
+                                });
 
                             state = State::Literal;
                             start = index + percentage_size;
                         } else if c == '/' {
                             // options
-                            let (_, delim) = chars[i + 1];
+                            let (_, delimeter) = chars[i + 1];
                             let trailing = chars[i + 2].1 == '+';
 
                             // ignore the starting %
@@ -124,8 +128,13 @@ impl<'t> TemplateSpan<'t> {
                                 i = i + 3;
                             }
 
-                            span.instructions
-                                .push(Instruction::Evaluate(&line[var_start..index]));
+                            span.instructions.push(Instruction::Evaluate {
+                                var: &line[var_start..index],
+                                opts: ExpandOptions {
+                                    delimeter: Some(delimeter),
+                                    trailing,
+                                },
+                            });
 
                             state = State::Literal;
                         };
@@ -155,30 +164,46 @@ impl<'t> TemplateSpan<'t> {
         span
     }
 
-    pub fn print(&self, base_indent: u16, scope: Scope) {
+    fn evaluate_variable(
+        &self,
+        indent: u16,
+        variable: &str,
+        scope: &mut Scope,
+        opts: ExpandOptions,
+    ) {
+        let scope_val = scope.map.get_mut(variable).unwrap_or_else(|| {
+            panic!("Unknown variable %{}%", variable);
+        });
+        match scope_val {
+            ScopeValue::Text(text) => print!("{}", text),
+            ScopeValue::Expand(expander) => {
+                loop {
+                    if !expander.expand_next(indent) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn print(&self, base_indent: u16, mut scope: Scope) {
         let mut line_indent = 0;
-        for inst in self.instructions.iter() {
+        for inst in self.instructions.iter().cloned() {
             match inst {
                 Instruction::Newline => {
                     print!("\n");
                     line_indent = 0;
                     do_indent(base_indent);
                 }
-                &Instruction::Indent(size) => {
+                Instruction::Indent(size) => {
                     line_indent = size;
                     do_indent(size);
                 }
                 Instruction::Literal(val) => {
                     print!("{}", val);
                 }
-                &Instruction::Evaluate(variable) => {
-                    let scope_val = scope.map.get(variable).unwrap_or_else(|| {
-                        panic!("Unknown variable %{}%", variable);
-                    });
-                    match scope_val {
-                        ScopeValue::Text(text) => print!("{}", text),
-                        ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
-                    }
+                Instruction::Evaluate { var, opts } => {
+                    self.evaluate_variable(base_indent + line_indent, var, &mut scope, opts)
                 }
             }
         }
