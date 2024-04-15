@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::items::{PrimitiveType, StructField, TyKind};
 
-use super::expander::Expander;
+use super::expander::{Expander, MultiVariableOptions};
 use super::scope::Scope;
 use super::span::{do_indent, TemplateSpan};
 

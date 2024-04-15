@@ -69,11 +69,11 @@ public %name%!: %ty%;
 #message_struct
 
 const _%name%Fields: StructField[] = [
-    %%type_ast%%
+    %type_ast%
 ];
 
 export class %name% extends StructMessage {
-    %%fields%%
+    %fields%
 }
 
 _messageMap.set("%name%", %name%);

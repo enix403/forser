@@ -8,9 +8,7 @@ pub enum Instruction<'t> {
 
     Literal(&'t str),
 
-    EvaluateSingle(&'t str),
-
-    EvaluateMultiple(&'t str),
+    Evaluate(&'t str),
 }
 
 #[derive(Clone, Debug)]
@@ -34,9 +32,7 @@ impl<'t> TemplateSpan<'t> {
         enum State {
             Indenting,
             Literal,
-            VariableDetected,
-            VariableSingle,
-            VariableMutiple,
+            Variable,
         }
 
         let mut is_tail = false;
@@ -54,6 +50,7 @@ impl<'t> TemplateSpan<'t> {
 
             let mut chars = line.char_indices().collect::<Vec<_>>();
 
+
             let mut i = 0;
             while i < chars.len() {
                 let (index, c) = chars[i];
@@ -68,10 +65,11 @@ impl<'t> TemplateSpan<'t> {
                             span.instructions.push(Instruction::Indent(indent));
                         }
                         state = if c == '%' {
-                            State::VariableDetected
+                            State::Variable
                         } else {
                             State::Literal
                         };
+                        // NOTE: % is included in start in case of State::Variable
                         start = index;
                     }
 
@@ -81,42 +79,23 @@ impl<'t> TemplateSpan<'t> {
                                 span.instructions
                                     .push(Instruction::Literal(&line[start..index]));
                             }
-                            state = State::VariableDetected;
+                            state = State::Variable;
+                            // NOTE: % is included in start
                             start = index;
                         }
                     }
 
-                    (State::VariableDetected, c) => {
+                    (State::Variable, c) => {
+                        let percentage_size = '%'.len_utf16();
                         if c == '%' {
-                            state = State::VariableMutiple;
-                            // Index of next char
-                            start = index + '%'.len_utf16();
-                        } else {
-                            state = State::VariableSingle;
-                            start = index;
-                        }
-                    }
+                            // ignore the starting %
+                            start += percentage_size;
 
-                    (State::VariableSingle, c) => {
-                        if c == '%' {
                             span.instructions
-                                .push(Instruction::EvaluateSingle(&line[start..index]));
+                                .push(Instruction::Evaluate(&line[start..index]));
 
                             state = State::Literal;
-                            start = index + c.len_utf16();
-                        }
-                    }
-
-                    (State::VariableMutiple, c) => {
-                        let next = chars.get(i + 1);
-                        if let Some(&(next_index, p)) = next {
-                            if c == '%' && p == '%' {
-                                span.instructions
-                                    .push(Instruction::EvaluateMultiple(&line[start..index]));
-                                state = State::Literal;
-                                start = next_index + '%'.len_utf16();
-                                i += 1;
-                            }
+                            start = index + percentage_size;
                         }
                     }
 
@@ -125,6 +104,7 @@ impl<'t> TemplateSpan<'t> {
 
                 i += 1;
             }
+
 
             if let State::Literal = state {
                 let lit = &line[start..];
@@ -160,7 +140,7 @@ impl<'t> TemplateSpan<'t> {
                 Instruction::Literal(val) => {
                     print!("{}", val);
                 }
-                &Instruction::EvaluateSingle(variable) => {
+                &Instruction::Evaluate(variable) => {
                     let scope_val = scope.map.get(variable).unwrap_or_else(|| {
                         panic!("Unknown variable %{}%", variable);
                     });
@@ -169,17 +149,17 @@ impl<'t> TemplateSpan<'t> {
                         ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
                     }
                 }
-                &Instruction::EvaluateMultiple(variable) => {
-                    let scope_val = scope.map.get(variable).unwrap_or_else(|| {
-                        panic!("Unknown variable %%{}%%", variable);
-                    });
-                    match scope_val {
-                        ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
-                        ScopeValue::Text(..) => {
-                            panic!("a %%multiple%% variable cannot have a single text value")
-                        }
-                    }
-                }
+                // &Instruction::EvaluateMultiple(variable) => {
+                //     let scope_val = scope.map.get(variable).unwrap_or_else(|| {
+                //         panic!("Unknown variable %%{}%%", variable);
+                //     });
+                //     match scope_val {
+                //         ScopeValue::Expand(expander) => expander.expand(base_indent + line_indent),
+                //         ScopeValue::Text(..) => {
+                //             panic!("a %%multiple%% variable cannot have a single text value")
+                //         }
+                //     }
+                // }
             }
         }
     }
