@@ -150,6 +150,7 @@ impl<'t> TemplateSpan<'t> {
             }
 
             if let State::Closed = state {
+                // ... do nothing ...
             } else if let State::Literal = state {
                 let lit = &line[start..];
                 if !lit.is_empty() {
@@ -180,11 +181,25 @@ impl<'t> TemplateSpan<'t> {
         });
         match scope_val {
             ScopeValue::Text(text) => print!("{}", text),
-            ScopeValue::Expand(expander) => loop {
-                if !expander.expand_next(indent) {
-                    break;
+            ScopeValue::Expand(expander) => {
+                let total = expander.count();
+
+                for index in 0..total {
+                    if index != 0 {
+                        if let Some(delim) = opts.delimeter {
+                            print!("{}", delim);
+                        }
+                        print!("\n");
+                        do_indent(indent);
+                    }
+                    
+                    expander.expand_next(indent);
                 }
-            },
+
+                if opts.trailing && opts.delimeter.is_some() {
+                    print!("{}", opts.delimeter.unwrap());
+                }
+            }
         }
     }
 

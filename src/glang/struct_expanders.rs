@@ -20,7 +20,11 @@ struct SingleTypeAstExpander<'s> {
 }
 
 impl<'s> Expander for SingleTypeAstExpander<'s> {
-    fn expand_next(&mut self, base_indent: u16) -> bool {
+    fn count(&self) -> usize {
+        1
+    }
+
+    fn expand_next(&mut self, base_indent: u16) {
         match self.ty {
             TyKind::Primitive(..) => self.spanset.primitive.print(base_indent, Scope::new()),
             TyKind::UserDefined(ref name) => self
@@ -45,8 +49,6 @@ impl<'s> Expander for SingleTypeAstExpander<'s> {
                 .expand_next(base_indent);
             }
         }
-
-        return false;
     }
 }
 
@@ -65,7 +67,11 @@ impl<'s, F> Expander for TypeAstExpander<'s, F>
 where
     F: Iterator<Item = &'s StructField> + Clone,
 {
-    fn expand_next(&mut self, base_indent: u16) -> bool {
+    fn count(&self) -> usize {
+        self.fields.clone().count()
+    }
+
+    fn expand_next(&mut self, base_indent: u16) {
         if let Some(field) = self.fields.next() {
             let field_ast_expander = SingleTypeAstExpander {
                 spanset: self.spanset,
@@ -78,10 +84,6 @@ where
                     .add_text("name", &field.name)
                     .add_expander("ast", field_ast_expander),
             );
-
-            return true;
-        } else {
-            return false;
         }
     }
 }
@@ -104,7 +106,11 @@ pub struct FieldTypeExpander<'s> {
 }
 
 impl<'s> Expander for FieldTypeExpander<'s> {
-    fn expand_next(&mut self, base_indent: u16) -> bool {
+    fn count(&self) -> usize {
+        1
+    }
+
+    fn expand_next(&mut self, base_indent: u16) {
         match self.ty {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveType::String => self.spanset.string.print(base_indent, Scope::new()),
@@ -140,8 +146,6 @@ impl<'s> Expander for FieldTypeExpander<'s> {
                 ),
             ),
         }
-
-        return false;
     }
 }
 
@@ -169,17 +173,12 @@ impl<'s, F> Expander for FieldsExpander<'s, F>
 where
     F: Iterator<Item = &'s StructField> + Clone,
 {
-    fn expand_next(&mut self, base_indent: u16) -> bool {
-        // let mut is_tail = false;
+    fn count(&self) -> usize {
+        self.fields.clone().count()
+    }
 
+    fn expand_next(&mut self, base_indent: u16) {
         if let Some(field) = self.fields.next() {
-            // if is_tail {
-            //     print!("\n");
-            //     do_indent(base_indent);
-            // } else {
-            //     is_tail = true;
-            // }
-
             let field_type_expander = FieldTypeExpander {
                 spanset: self.spanset,
                 ty: &field.datatype,
@@ -191,10 +190,6 @@ where
                     .add_text("name", &field.name)
                     .add_expander("ty", field_type_expander),
             );
-
-            return true;
-        } else {
-            return false;
         }
     }
 }
