@@ -23,9 +23,6 @@ fn main() {
     let program = get_test_program();
 
     template.print(&program);
-
-    // let span = span::TemplateSpan::compile("{\n    kind: %%TyKindTag%%.Message,\n    of: \"%name%\"\n}");
-    // println!("{:#?}", span)
 }
 
 static CODE: &'static str = r#"
@@ -79,29 +76,8 @@ export class %name% extends StructMessage {
     %%fields%%
 }
 
+_messageMap.set("%name%", %name%);
+_fieldsMap.set(%name%, _%name%Fields);
+
 #end/message_struct
 "#;
-
-/*
-export class %name% extends StructMessage {
-    %%fields%%
-}
-*/
-
-/*
-
-AstExpandeR {
-    expand() {
-        for f in fields {
-            expand_field(f)
-        }
-    }
-
-    expand_field(f) {
-        prim -> print_span(some_indent, prim_inst, empty_scope)
-        msg  -> print_span(some_indent, msg_inst, scope with name of message)
-        arr  -> print_span(some_indent, arr_inst, FieldExpander(arr.of))
-    }
-}
-
-*/

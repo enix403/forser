@@ -72,7 +72,7 @@ impl<'t> Template<'t> {
                 } else {
                     let section = cur_section.take().unwrap();
 
-                    section.body = &content[start..current].trim();
+                    section.body = &content[start..current];
                 }
             }
 
