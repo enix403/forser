@@ -1,4 +1,4 @@
-use super::scope::{Scope, ScopeValue};
+use super::scope::{AssemblyContext, Scope, ScopeValue};
 use std::io::{self, Write};
 
 #[derive(Debug, Clone, Default)]
@@ -170,79 +170,72 @@ impl<'t> TemplateSpan<'t> {
         span
     }
 
-    fn evaluate_variable<W: Write>(
+    pub fn print<C: AssemblyContext>(
         &self,
-        dest: &mut W,
-        indent: u16,
-        variable: &str,
-        scope: &mut Scope,
-        opts: ExpandOptions,
-    ) -> io::Result<()> {
-        let scope_val = scope.map.get_mut(variable).unwrap_or_else(|| {
-            panic!("Unknown variable %{}%", variable);
-        });
-
-        match scope_val {
-            ScopeValue::Text(text) => write!(dest, "{}", text)?,
-            ScopeValue::Expand(expander) => {
-                let total = expander.count();
-
-                for index in 0..total {
-                    if index != 0 {
-                        if let Some(delim) = opts.delimeter {
-                            write!(dest, "{}", delim)?;
-                        }
-                        write!(dest, "\n")?;
-                        do_indent(indent, dest)?;
-                    }
-
-                    expander.expand_next(indent);
-                }
-
-                if opts.trailing && opts.delimeter.is_some() {
-                    write!(dest, "{}", opts.delimeter.unwrap())?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn print<W: Write>(
-        &self,
-        dest: &mut W,
         base_indent: u16,
-        mut scope: Scope,
+        mut scope: Scope<C>,
     ) -> io::Result<()> {
-        let mut line_indent = 0;
-        for inst in self.instructions.iter().cloned() {
-            match inst {
-                Instruction::Newline => {
-                    write!(dest, "\n")?;
-                    line_indent = 0;
-                    do_indent(base_indent, dest)?;
-                }
-                Instruction::Indent(size) => {
-                    line_indent = size;
-                    do_indent(size, dest)?;
-                }
-                Instruction::Literal(val) => {
-                    write!(dest, "{}", val)?;
-                }
-                Instruction::Evaluate { var, opts } => {
-                    self.evaluate_variable(dest, base_indent + line_indent, var, &mut scope, opts)?
-                }
-            }
-        }
-
-        Ok(())
+        print_span_impl(self, base_indent, scope)
     }
 }
 
-fn do_indent<W: Write>(size: u16, dest: &mut W) -> io::Result<()> {
-    // TODO: optimize
-    for _ in 0..size {
-        write!(dest, " ")?;
+fn print_span_impl<C: AssemblyContext>(
+    span: &TemplateSpan,
+    base_indent: u16,
+    mut scope: Scope<C>,
+) -> io::Result<()> {
+    let mut line_indent = 0;
+    for inst in span.instructions.iter() {
+        match inst {
+            Instruction::Newline => {
+                scope.write("\n")?;
+                line_indent = 0;
+                scope.do_indent(base_indent)?;
+            }
+            Instruction::Indent(size) => {
+                let size = *size;
+                line_indent = size;
+                scope.do_indent(size)?;
+            }
+            Instruction::Literal(val) => {
+                scope.write(val)?;
+            }
+            Instruction::Evaluate { var, opts } => {
+                // let scope_val = scope.map.get_mut(var).unwrap_or_else(|| {
+                //     panic!("Unknown variable %{}%", var);
+                // });
+
+                let scope_val = scope.get_value(var);
+
+                match scope_val {
+                    // ScopeValue::Text(text) => write!(dest, "{}", text)?,
+                    ScopeValue::Text(text) => scope.write(text)?,
+                    ScopeValue::Expand(expander) => {
+                        let total = expander.count();
+                        let next_indent = line_indent + base_indent;
+
+                        for index in 0..total {
+                            if index != 0 {
+                                if let Some(delim) = opts.delimeter {
+                                    // TDOD: to string
+                                    scope.write(delim.to_string().as_str())?;
+                                }
+                                scope.write("\n")?;
+                                scope.do_indent(next_indent)?;
+                            }
+
+                            scope.with_context(|context| {
+                                expander.expand_next(context, next_indent);
+                            })
+                        }
+
+                        if opts.trailing && opts.delimeter.is_some() {
+                            scope.write(opts.delimeter.unwrap().to_string().as_str())?;
+                        }
+                    }
+                } // End match ScopeValue
+            } /* End Match Instruction */
+        }
     }
 
     Ok(())

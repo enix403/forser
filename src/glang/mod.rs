@@ -10,6 +10,7 @@ pub mod span;
 pub mod struct_expanders;
 
 use scope::Scope;
+use expander::{AssemblyContext, Expander};
 use span::TemplateSpan;
 use struct_expanders::{FieldTypeSpans, FieldsExpander, TypeAstExpander, TypeAstSpans};
 
@@ -26,6 +27,17 @@ pub struct Template<'t> {
     field_visitor: Section<'t>,
     message_struct: Section<'t>,
 }
+
+#[derive(Clone)]
+struct ConsoleContext;
+
+impl AssemblyContext for ConsoleContext {
+    fn write(&mut self, s: &str) -> std::io::Result<()> {
+        print!("{}", s);
+        Ok(())
+    }
+}
+
 
 impl<'t> Template<'t> {
     pub fn compile(content: &'t str) -> Self {
@@ -141,19 +153,19 @@ impl<'t> Template<'t> {
         let field_body_span = TemplateSpan::compile(self.field_visitor.body);
 
         for struct_ in program.structs.iter() {
-            let scope = Scope::new()
+            let scope = Scope::new(ConsoleContext)
                 /* ... */
                 .add_text("name", &struct_.name)
                 .add_expander(
                     "type_ast",
-                    TypeAstExpander::new(&type_ast_spanset, struct_.fields.iter(), &mut dest),
+                    TypeAstExpander::new(&type_ast_spanset, struct_.fields.iter()),
                 )
                 .add_expander(
                     "fields",
-                    FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span, &mut dest),
+                    FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span),
                 );
 
-            message_body_span.print(&mut dest, 0, scope);
+            message_body_span.print(0, scope);
 
             print!("\n");
         }
