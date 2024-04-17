@@ -5,14 +5,15 @@ use std::io::Write;
 use crate::items::{Program, StructDefinition};
 
 pub mod expander;
-pub mod scope;
+// pub mod scope;
 pub mod span;
 pub mod struct_expanders;
 
-use scope::Scope;
-use expander::{AssemblyContext, Expander};
+// use scope::Scope;
 use span::TemplateSpan;
-use struct_expanders::{FieldTypeSpans, FieldsExpander, TypeAstExpander, TypeAstSpans};
+use expander::{Writable, Expander, Scope, WriteContext};
+// use struct_expanders::{FieldTypeSpans, FieldsExpander, TypeAstExpander, TypeAstSpans};
+use struct_expanders::{FieldTypeSpans, TypeAstExpander, TypeAstSpans};
 
 #[derive(Debug, Clone, Default)]
 pub struct Section<'t> {
@@ -31,9 +32,14 @@ pub struct Template<'t> {
 #[derive(Clone)]
 struct ConsoleContext;
 
-impl AssemblyContext for ConsoleContext {
-    fn write(&mut self, s: &str) -> std::io::Result<()> {
-        print!("{}", s);
+impl Writable for ConsoleContext {
+    fn write_char(&mut self, c: char) -> std::io::Result<()> {
+        println!("{}", c);
+        Ok(())
+    }
+
+    fn write_str(&mut self, s: &str) -> std::io::Result<()> {
+        println!("{}", s);
         Ok(())
     }
 }
@@ -153,19 +159,19 @@ impl<'t> Template<'t> {
         let field_body_span = TemplateSpan::compile(self.field_visitor.body);
 
         for struct_ in program.structs.iter() {
-            let scope = Scope::new(ConsoleContext)
+            let scope = Scope::new()
                 /* ... */
                 .add_text("name", &struct_.name)
                 .add_expander(
                     "type_ast",
                     TypeAstExpander::new(&type_ast_spanset, struct_.fields.iter()),
-                )
-                .add_expander(
-                    "fields",
-                    FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span),
                 );
+                // .add_expander(
+                //     "fields",
+                //     FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span),
+                // );
 
-            message_body_span.print(0, scope);
+            message_body_span.print(0, &mut WriteContext::new(ConsoleContext), scope);
 
             print!("\n");
         }

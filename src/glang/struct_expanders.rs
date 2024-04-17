@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use crate::items::{PrimitiveType, StructField, TyKind};
 
-use super::expander::{AssemblyContext, Expander};
-use super::scope::Scope;
+use super::expander::{Expander, Scope, Writable, WriteContext};
+// use super::scope::Scope;
 use super::span::TemplateSpan;
 
 #[derive(Clone)]
@@ -20,24 +20,28 @@ struct SingleTypeAstExpander<'s> {
     ty: &'s TyKind,
 }
 
-impl<'s, C: AssemblyContext> Expander<C> for SingleTypeAstExpander<'s> {
+impl<'s, W: Writable> Expander<W> for SingleTypeAstExpander<'s> {
     fn count(&self) -> usize {
         1
     }
 
-    fn expand_next(&mut self, context: &mut C, base_indent: u16) -> io::Result<()> {
+    fn expand_next(&mut self, base_indent: u16, context: &mut WriteContext<W>) -> io::Result<()> {
         match self.ty {
-            TyKind::Primitive(..) => self
-                .spanset
-                .primitive
-                .print(base_indent, Scope::new(context.clone()))?,
+            TyKind::Primitive(..) => {
+                self.spanset
+                    .primitive
+                    .print(base_indent, context, Scope::new())?
+            }
+
             TyKind::UserDefined(ref name) => self.spanset.message.print(
                 base_indent,
-                Scope::new(context.clone()).add_text("name", &name),
+                context,
+                Scope::new().add_text("name", &name),
             )?,
             TyKind::Array(ref inner) => self.spanset.array.print(
                 base_indent,
-                Scope::new(context.clone()).add_expander(
+                context,
+                Scope::new().add_expander(
                     "of",
                     SingleTypeAstExpander {
                         spanset: self.spanset,
@@ -50,7 +54,7 @@ impl<'s, C: AssemblyContext> Expander<C> for SingleTypeAstExpander<'s> {
                     spanset: self.spanset,
                     ty: inner.as_ref(),
                 }
-                .expand_next(context, base_indent)?;
+                .expand_next(base_indent, context)?;
             }
         };
 
@@ -69,7 +73,7 @@ impl<'s, F> TypeAstExpander<'s, F> {
     }
 }
 
-impl<'s, F, C: AssemblyContext> Expander<C> for TypeAstExpander<'s, F>
+impl<'s, F, W: Writable> Expander<W> for TypeAstExpander<'s, F>
 where
     F: Iterator<Item = &'s StructField> + Clone,
 {
@@ -77,7 +81,8 @@ where
         self.fields.clone().count()
     }
 
-    fn expand_next(&mut self, context: &mut C, base_indent: u16) -> io::Result<()> {
+    // fn expand_next(&mut self, context: &mut C, base_indent: u16) -> io::Result<()> {
+    fn expand_next(&mut self, base_indent: u16, context: &mut WriteContext<W>) -> io::Result<()> {
         if let Some(field) = self.fields.next() {
             let field_ast_expander = SingleTypeAstExpander {
                 spanset: self.spanset,
@@ -86,7 +91,8 @@ where
 
             self.spanset.main.print(
                 base_indent,
-                Scope::new(context.clone())
+                context,
+                Scope::new()
                     .add_text("name", &field.name)
                     .add_expander("ast", field_ast_expander),
             )?;
@@ -97,7 +103,6 @@ where
 }
 
 /* =============================================================================================== */
-
 pub struct FieldTypeSpans<'s> {
     pub string: TemplateSpan<'s>,
     pub int: TemplateSpan<'s>,
@@ -107,6 +112,7 @@ pub struct FieldTypeSpans<'s> {
     pub null: TemplateSpan<'s>,
     pub struct_: TemplateSpan<'s>,
 }
+/*
 
 pub struct FieldTypeExpander<'s> {
     spanset: &'s FieldTypeSpans<'s>,
@@ -217,3 +223,4 @@ where
         Ok(())
     }
 }
+*/
