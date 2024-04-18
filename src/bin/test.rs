@@ -19,10 +19,10 @@ fn get_test_program() -> Program {
 }
 
 fn main() {
-    let template = Template::compile(CODE);
-    let program = get_test_program();
+    // let template = Template::compile(CODE);
+    // let program = get_test_program();
 
-    template.print(&program);
+    // template.print(&program);
 }
 
 static CODE: &'static str = r#"
