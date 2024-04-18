@@ -1,5 +1,6 @@
-use crate::items::{Program, TyKind};
+use crate::items::{Program, StructField, TyKind};
 use std::io;
+use std::marker::PhantomData;
 use std::{collections::HashMap, io::Write};
 
 /*
@@ -267,7 +268,13 @@ struct Template<'t> {
 /* ==================================== */
 
 trait Evaluater<W> {
-    fn evaluate(&self, dest: &mut W, indent: u16, opts: &EvaluateOptions, template: &Template<'_>);
+    fn evaluate(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &EvaluateOptions,
+        template: &Template<'_>,
+    );
 }
 
 struct TextEvaluater<'a> {
@@ -281,7 +288,13 @@ impl<'a> TextEvaluater<'a> {
 }
 
 impl<'a, W: Write> Evaluater<W> for TextEvaluater<'a> {
-    fn evaluate(&self, dest: &mut W, indent: u16, opts: &EvaluateOptions, template: &Template<'_>) {
+    fn evaluate(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &EvaluateOptions,
+        template: &Template<'_>,
+    ) {
         write!(dest, "{}", self.text).unwrap();
     }
 }
@@ -343,7 +356,13 @@ impl<'a> TypeAstNodeEvaluater<'a> {
 }
 
 impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
-    fn evaluate(&self, dest: &mut W, indent: u16, opts: &EvaluateOptions, template: &Template<'_>) {
+    fn evaluate(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &EvaluateOptions,
+        template: &Template<'_>,
+    ) {
         match self.ty {
             TyKind::Primitive(prim) => {
                 render_span(
@@ -375,33 +394,57 @@ impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
                 );
             }
 
-            TyKind::Nullable(ref inner) => {
-                TypeAstNodeEvaluater::new(inner).evaluate(
-                    dest,
-                    indent,
-                    &EvaluateOptions::default(),
-                    template,
-                )
-            }
+            TyKind::Nullable(ref inner) => TypeAstNodeEvaluater::new(inner).evaluate(
+                dest,
+                indent,
+                &EvaluateOptions::default(),
+                template,
+            ),
         }
     }
 }
 
 /* ---------------------------------------- */
 
-// pub struct TypeAstEvaluater<F> {
-//     fields: F,
-// }
+pub struct TypeAstEvaluater<'a, F> {
+    fields: F,
+    _phantom: PhantomData<&'a ()>,
+}
 
-// impl<F> TypeAstEvaluater<F> {
-//     pub fn new(fields: F) -> Self {
-//         Self { fields }
-//     }
-// }
+impl<'a, F> TypeAstEvaluater<'a, F> {
+    pub fn new(fields: F) -> Self {
+        Self {
+            fields,
+            _phantom: PhantomData,
+        }
+    }
+}
 
-// impl<'a, W: Write> Evaluater<W> for TypeAstEvaluater<F> {
-// }
-
+impl<'a, F, W> Evaluater<W> for TypeAstEvaluater<'a, F>
+where
+    W: Write,
+    F: Iterator<Item = &'a StructField> + Clone,
+{
+    fn evaluate(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &EvaluateOptions,
+        template: &Template<'_>,
+    ) {
+        while let Some(field) = self.fields.next() {
+            render_span(
+                &template.ast_main,
+                dest,
+                Scope::new()
+                    .add_text("name", &field.name)
+                    .add_evaluater("ast", TypeAstNodeEvaluater::new(&field.datatype)),
+                indent,
+                template,
+            );
+        }
+    }
+}
 
 /* ==================================== */
 
