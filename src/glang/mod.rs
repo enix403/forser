@@ -3,76 +3,6 @@ use std::io;
 use std::marker::PhantomData;
 use std::{collections::HashMap, io::Write};
 
-/*
-#[derive(Debug, Clone, Default)]
-pub struct Section<'t> {
-    body: &'t str,
-}
-
-#[derive(Debug, Default)]
-pub struct Template<'t> {
-    pub prelude: Section<'t>,
-    pub types: Section<'t>,
-    pub type_visitor: Section<'t>,
-    pub field_visitor: Section<'t>,
-    pub message_struct: Section<'t>,
-}
-
-fn compile_template<'t>(content: &'t str) -> Template<'t> {
-    let mut template = Template::default();
-    let lines = content.split_inclusive('\n');
-
-    let mut cur_section: Option<&mut Section<'t>> = None;
-    let mut start = 0;
-    let mut current = 0;
-
-    for line in lines {
-        let len = line.len();
-        let current_new = current + len;
-
-        // Strip trailing newlines
-        let line = line
-            .strip_suffix('\n')
-            .map(|line| line.strip_suffix('\r').unwrap_or(line))
-            .unwrap_or(line);
-
-        if line.trim().starts_with("#") {
-            let line = line.trim().strip_prefix("#").unwrap();
-            let (is_start, name) = if line.starts_with("end/") {
-                (false, line.strip_prefix("end/").unwrap())
-            } else {
-                (true, line)
-            };
-
-            if is_start {
-                if cur_section.is_none() {
-                    cur_section = Some(match name {
-                        "prelude" => &mut template.prelude,
-                        "types" => &mut template.types,
-                        "type_visitor" => &mut template.type_visitor,
-                        "field_visitor" => &mut template.field_visitor,
-                        "message_struct" => &mut template.message_struct,
-                        _ => panic!("Unknown Section"),
-                    });
-
-                    start = current_new;
-                } else {
-                    panic!("Already in section");
-                }
-            } else {
-                let section = cur_section.take().unwrap();
-
-                section.body = &content[start..current];
-            }
-        }
-
-        current = current_new;
-    }
-
-    template
-}
-*/
-
 /* ==================================== */
 /* ==================================== */
 /* ==================================== */
@@ -249,6 +179,7 @@ pub struct Section<'t> {
     body: &'t str,
 }
 
+#[derive(Debug, Clone, Default)]
 struct Template<'t> {
     prelude: Section<'t>,
     /* ... */
@@ -267,7 +198,7 @@ struct Template<'t> {
     /* ... */
     field_body: TemplateSpan<'t>,
     /* ... */
-    message_struct: Section<'t>,
+    message_struct: TemplateSpan<'t>,
 }
 
 /* ==================================== */
@@ -391,7 +322,7 @@ impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
 
             TyKind::Array(ref inner) => {
                 render_span(
-                    &template.ast_message,
+                    &template.ast_array,
                     dest,
                     Scope::new().add_evaluater("of", TypeAstNodeEvaluater::new(&inner)),
                     indent,
@@ -638,4 +569,256 @@ impl<'a, W: Write> SpanWriter<'a, W> {
 /* ==================================== */
 /* ==================================== */
 
-pub fn render_template<W: Write>(source: &str, program: &Program, mut dest: W) {}
+pub mod driver {
+    use super::*;
+
+    #[derive(Debug, Default)]
+    struct TemplateSections<'t> {
+        pub prelude: Section<'t>,
+        pub types: Section<'t>,
+        pub type_visitor: Section<'t>,
+        pub field_visitor: Section<'t>,
+        pub message_struct: Section<'t>,
+    }
+
+    fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
+        let mut sections = TemplateSections::default();
+
+        let lines = source.split_inclusive('\n');
+
+        let mut cur_section: Option<&mut Section<'a>> = None;
+        let mut start = 0;
+        let mut current = 0;
+
+        for line in lines {
+            let len = line.len();
+            let current_new = current + len;
+
+            // Strip trailing newlines
+            let line = line
+                .strip_suffix('\n')
+                .map(|line| line.strip_suffix('\r').unwrap_or(line))
+                .unwrap_or(line);
+
+            if line.trim().starts_with("#") {
+                let line = line.trim().strip_prefix("#").unwrap();
+                let (is_start, name) = if line.starts_with("end/") {
+                    (false, line.strip_prefix("end/").unwrap())
+                } else {
+                    (true, line)
+                };
+
+                if is_start {
+                    if cur_section.is_none() {
+                        cur_section = Some(match name {
+                            "prelude" => &mut sections.prelude,
+                            "types" => &mut sections.types,
+                            "type_visitor" => &mut sections.type_visitor,
+                            "field_visitor" => &mut sections.field_visitor,
+                            "message_struct" => &mut sections.message_struct,
+                            _ => panic!("Unknown Section"),
+                        });
+
+                        start = current_new;
+                    } else {
+                        panic!("Already in section");
+                    }
+                } else {
+                    let section = cur_section.take().unwrap();
+
+                    section.body = &source[start..current];
+                }
+            }
+
+            current = current_new;
+        }
+
+        sections
+    }
+
+    fn stream_parse_visitors<'t, F>(mut source: &'t str, mut receiver: F)
+    where
+        F: FnMut(&'t str, TemplateSpan<'t>),
+    {
+        loop {
+            source = source.trim();
+
+            if source.is_empty() {
+                break;
+            }
+
+            let (name, rem) = source.split_at(source.find(' ').unwrap());
+
+            let rem = rem.trim_start().strip_prefix('{').unwrap();
+
+            // at this point rem is something like this
+            // ..target string..}..extra string...
+
+            let mut brackets_open = 1;
+            let mut end_index = None;
+
+            for (i, c) in rem.char_indices() {
+                if c == '}' {
+                    brackets_open -= 1;
+                    if brackets_open == 0 {
+                        end_index = Some(i);
+                        break;
+                    }
+                } else if c == '{' {
+                    brackets_open += 1;
+                }
+            }
+
+            let (body, rem) = rem.split_at(end_index.unwrap());
+
+            receiver(name, compile_span(body.trim()));
+
+            // Remove the trailing (or now, leading) closing bracket after the parsed body
+            source = rem.strip_prefix('}').unwrap()
+        }
+    }
+
+    pub fn render_template<'a, W: Write>(source: &'a str, program: &Program, mut dest: W) {
+        /**/
+
+        // struct Template<'t> {
+        //     prelude: Section<'t>,
+        //     /* ... */
+        //     field_string: TemplateSpan<'t>,
+        //     field_int: TemplateSpan<'t>,
+        //     field_float: TemplateSpan<'t>,
+        //     field_bool: TemplateSpan<'t>,
+        //     field_array: TemplateSpan<'t>,
+        //     field_null: TemplateSpan<'t>,
+        //     field_struct_: TemplateSpan<'t>,
+        //     /* ... */
+        //     ast_primitive: TemplateSpan<'t>,
+        //     ast_message: TemplateSpan<'t>,
+        //     ast_array: TemplateSpan<'t>,
+        //     ast_main: TemplateSpan<'t>,
+        //     /* ... */
+        //     field_body: TemplateSpan<'t>,
+        //     /* ... */
+        //     message_struct: Section<'t>,
+        // }
+
+        let sections = compile_template_sections(source);
+        let mut template = Template::default();
+
+        template.prelude = sections.prelude.clone();
+
+        stream_parse_visitors(sections.types.body, |name, span| match name {
+            "string" => template.field_string = span,
+            "int" => template.field_int = span,
+            "float" => template.field_float = span,
+            "bool_" => template.field_bool = span,
+            "array" => template.field_array = span,
+            "null" => template.field_null = span,
+            "struct" => template.field_struct_ = span,
+            _ => {}
+        });
+
+        stream_parse_visitors(sections.type_visitor.body, |name, span| match name {
+            "primitive" => template.ast_primitive = span,
+            "message" => template.ast_message = span,
+            "array" => template.ast_array = span,
+            "main" => template.ast_main = span,
+            _ => {}
+        });
+
+        template.field_body = compile_span(sections.field_visitor.body);
+        template.message_struct = compile_span(sections.message_struct.body);
+
+        /* ===================== */
+
+        // write
+        writeln!(&mut dest, "{}", template.prelude.body).unwrap();
+
+        for struct_ in program.structs.iter() {
+            let scope = Scope::new()
+                /* ... */
+                .add_text("name", &struct_.name)
+                .add_evaluater("type_ast", TypeAstEvaluater::new(struct_.fields.iter()))
+                .add_evaluater("fields", FieldEvaluater::new(struct_.fields.iter()));
+            // .add_expander(
+            //     "fields",
+            //     FieldsExpander::new(struct_.fields.iter(), &field_spanset, &field_body_span),
+            // );
+
+            // message_body_span.print(0, &mut WriteContext::new(ConsoleContext), scope);
+            render_span(&template.message_struct, &mut dest, scope, 0, &template);
+
+            print!("\n");
+        }
+    }
+}
+
+/*
+#[derive(Debug, Clone, Default)]
+pub struct Section<'t> {
+    body: &'t str,
+}
+
+#[derive(Debug, Default)]
+pub struct Template<'t> {
+    pub prelude: Section<'t>,
+    pub types: Section<'t>,
+    pub type_visitor: Section<'t>,
+    pub field_visitor: Section<'t>,
+    pub message_struct: Section<'t>,
+}
+
+fn compile_template<'t>(content: &'t str) -> Template<'t> {
+    let mut template = Template::default();
+    let lines = content.split_inclusive('\n');
+
+    let mut cur_section: Option<&mut Section<'t>> = None;
+    let mut start = 0;
+    let mut current = 0;
+
+    for line in lines {
+        let len = line.len();
+        let current_new = current + len;
+
+        // Strip trailing newlines
+        let line = line
+            .strip_suffix('\n')
+            .map(|line| line.strip_suffix('\r').unwrap_or(line))
+            .unwrap_or(line);
+
+        if line.trim().starts_with("#") {
+            let line = line.trim().strip_prefix("#").unwrap();
+            let (is_start, name) = if line.starts_with("end/") {
+                (false, line.strip_prefix("end/").unwrap())
+            } else {
+                (true, line)
+            };
+
+            if is_start {
+                if cur_section.is_none() {
+                    cur_section = Some(match name {
+                        "prelude" => &mut template.prelude,
+                        "types" => &mut template.types,
+                        "type_visitor" => &mut template.type_visitor,
+                        "field_visitor" => &mut template.field_visitor,
+                        "message_struct" => &mut template.message_struct,
+                        _ => panic!("Unknown Section"),
+                    });
+
+                    start = current_new;
+                } else {
+                    panic!("Already in section");
+                }
+            } else {
+                let section = cur_section.take().unwrap();
+
+                section.body = &content[start..current];
+            }
+        }
+
+        current = current_new;
+    }
+
+    template
+}
+*/

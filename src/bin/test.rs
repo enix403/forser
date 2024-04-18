@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-use forser::glang::*;
+use forser::glang;
 use forser::items::Program;
 use forser::lexer::ForserFile;
 use forser::lexer::Lexer;
@@ -20,9 +20,12 @@ fn get_test_program() -> Program {
 
 fn main() {
     // let template = Template::compile(CODE);
-    // let program = get_test_program();
+    let program = get_test_program();
 
     // template.print(&program);
+
+    glang::driver::render_template(CODE, &program, std::io::stdout());
+
 }
 
 static CODE: &'static str = r#"
