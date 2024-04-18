@@ -11,7 +11,13 @@ use super::template::{ExpandOptions, Template};
 struct TypeAstNodeExpander<'a>(&'a TyKind);
 
 impl<'a, W: Write> Expander<W> for TypeAstNodeExpander<'a> {
-    fn expand(&mut self, dest: &mut W, indent: u16, opts: &ExpandOptions, template: &Template<'_>) {
+    fn expand(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &ExpandOptions,
+        template: &Template<'_>,
+    ) -> io::Result<()> {
         match self.0 {
             TyKind::Primitive(prim) => {
                 render_span(
@@ -20,7 +26,7 @@ impl<'a, W: Write> Expander<W> for TypeAstNodeExpander<'a> {
                     Scope::new(),
                     indent,
                     template,
-                );
+                )?;
             }
 
             TyKind::UserDefined(ref name) => {
@@ -30,7 +36,7 @@ impl<'a, W: Write> Expander<W> for TypeAstNodeExpander<'a> {
                     Scope::new().add_text("name", &name),
                     indent,
                     template,
-                );
+                )?;
             }
 
             TyKind::Array(ref inner) => {
@@ -40,13 +46,20 @@ impl<'a, W: Write> Expander<W> for TypeAstNodeExpander<'a> {
                     Scope::new().add_expander("of", TypeAstNodeExpander(&inner)),
                     indent,
                     template,
-                );
+                )?;
             }
 
             TyKind::Nullable(ref inner) => {
-                TypeAstNodeExpander(inner).expand(dest, indent, &ExpandOptions::default(), template)
+                TypeAstNodeExpander(inner).expand(
+                    dest,
+                    indent,
+                    &ExpandOptions::default(),
+                    template,
+                )?;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -71,7 +84,13 @@ where
     W: Write,
     F: Iterator<Item = &'a StructField> + Clone,
 {
-    fn expand(&mut self, dest: &mut W, indent: u16, opts: &ExpandOptions, template: &Template<'_>) {
+    fn expand(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &ExpandOptions,
+        template: &Template<'_>,
+    ) -> io::Result<()> {
         newline_delimeters(dest, self.fields.clone(), opts, indent, |field, dest| {
             render_span(
                 &template.ast_main,
@@ -82,8 +101,7 @@ where
                 indent,
                 template,
             )
-            .unwrap();
-        });
+        })
     }
 }
 
@@ -93,20 +111,26 @@ where
 pub struct FieldTypeExpander<'s>(&'s TyKind);
 
 impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
-    fn expand(&mut self, dest: &mut W, indent: u16, opts: &ExpandOptions, template: &Template<'_>) {
+    fn expand(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &ExpandOptions,
+        template: &Template<'_>,
+    ) -> io::Result<()> {
         match self.0 {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveType::String => {
-                    render_span(&template.field_string, dest, Scope::new(), indent, template);
+                    render_span(&template.field_string, dest, Scope::new(), indent, template)?;
                 }
                 PrimitiveType::Int => {
-                    render_span(&template.field_int, dest, Scope::new(), indent, template);
+                    render_span(&template.field_int, dest, Scope::new(), indent, template)?;
                 }
                 PrimitiveType::Float => {
-                    render_span(&template.field_float, dest, Scope::new(), indent, template);
+                    render_span(&template.field_float, dest, Scope::new(), indent, template)?;
                 }
                 PrimitiveType::Bool => {
-                    render_span(&template.field_bool, dest, Scope::new(), indent, template);
+                    render_span(&template.field_bool, dest, Scope::new(), indent, template)?;
                 }
             },
 
@@ -117,7 +141,7 @@ impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
                     Scope::new().add_text("T", &name),
                     indent,
                     template,
-                );
+                )?;
             }
 
             TyKind::Nullable(inner) => {
@@ -127,7 +151,7 @@ impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
                     Scope::new().add_expander("T", FieldTypeExpander(inner.as_ref())),
                     indent,
                     template,
-                );
+                )?;
             }
 
             TyKind::Array(inner) => {
@@ -137,9 +161,11 @@ impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
                     Scope::new().add_expander("T", FieldTypeExpander(inner.as_ref())),
                     indent,
                     template,
-                );
+                )?;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -164,7 +190,13 @@ where
     W: Write,
     F: Iterator<Item = &'a StructField> + Clone,
 {
-    fn expand(&mut self, dest: &mut W, indent: u16, opts: &ExpandOptions, template: &Template<'_>) {
+    fn expand(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &ExpandOptions,
+        template: &Template<'_>,
+    ) -> io::Result<()> {
         newline_delimeters(dest, self.fields.clone(), opts, indent, |field, dest| {
             render_span(
                 &template.field_body,
@@ -175,7 +207,6 @@ where
                 indent,
                 template,
             )
-            .unwrap();
-        });
+        })
     }
 }

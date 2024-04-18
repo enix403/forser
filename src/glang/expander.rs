@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{self, Write};
 use super::template::{ExpandOptions, Template};
 
 pub trait Expander<W> {
@@ -8,7 +8,7 @@ pub trait Expander<W> {
         indent: u16,
         opts: &ExpandOptions,
         template: &Template<'_>,
-    );
+    ) -> io::Result<()>;
 }
 
 pub struct TextExpander<'a>(/* text: */ pub &'a str);
@@ -20,7 +20,7 @@ impl<'a, W: Write> Expander<W> for TextExpander<'a> {
         indent: u16,
         opts: &ExpandOptions,
         template: &Template<'_>,
-    ) {
-        write!(dest, "{}", self.0).unwrap();
+    ) -> io::Result<()> {
+        write!(dest, "{}", self.0)
     }
 }

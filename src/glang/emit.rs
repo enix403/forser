@@ -1,6 +1,6 @@
-use std::io::{self, Write};
-use super::template::{TemplateSpan, Template, ExpandOptions, Instruction};
 use super::scope::Scope;
+use super::template::{ExpandOptions, Instruction, Template, TemplateSpan};
+use std::io::{self, Write};
 
 pub struct SpanWriter<'a, W> {
     inner: &'a mut W,
@@ -50,27 +50,33 @@ pub fn newline_delimeters<I, F, W>(
     opts: &ExpandOptions,
     indent: u16,
     mut func: F,
-) where
+) -> io::Result<()>
+where
     W: Write,
-    F: FnMut(I, &mut W),
+    F: FnMut(I, &mut W) -> io::Result<()>,
 {
     let mut writer = SpanWriter::new(dest);
-    for (index, item) in items.enumerate() {
-        if index != 0 {
+    let mut is_tail = false;
+    for item in items {
+        if is_tail {
             if let Some(delim) = opts.delimeter {
-                writer.write_char(delim);
+                writer.write_char(delim)?;
             }
-            writer.write_char('\n');
-            writer.do_indent(indent);
+            writer.write_char('\n')?;
+            writer.do_indent(indent)?;
+        } else {
+            is_tail = true;
         }
 
         // Here &mut SpanWriter<W> deref_mut()'s into &mut W
-        func(item, &mut writer);
+        func(item, &mut writer)?;
     }
 
     if opts.trailing && opts.delimeter.is_some() {
-        writer.write_char(opts.delimeter.unwrap());
+        writer.write_char(opts.delimeter.unwrap())?;
     }
+
+    Ok(())
 }
 
 /* TODO: make sure its result is used */
@@ -102,7 +108,7 @@ pub fn render_span<W: Write>(
             }
             Instruction::Expand { var, opts } => {
                 let expander = scope.get_expander(var);
-                expander.expand(&mut writer, indent + current_line_indent, opts, template);
+                expander.expand(&mut writer, indent + current_line_indent, opts, template)?;
             }
         }
     }
