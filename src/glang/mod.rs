@@ -1,4 +1,4 @@
-use crate::items::{Program, StructField, TyKind};
+use crate::items::{PrimitiveType, Program, StructField, TyKind};
 use std::io;
 use std::marker::PhantomData;
 use std::{collections::HashMap, io::Write};
@@ -251,18 +251,23 @@ pub struct Section<'t> {
 
 struct Template<'t> {
     prelude: Section<'t>,
-    message_struct: Section<'t>,
+    /* ... */
+    field_string: TemplateSpan<'t>,
+    field_int: TemplateSpan<'t>,
+    field_float: TemplateSpan<'t>,
+    field_bool: TemplateSpan<'t>,
+    field_array: TemplateSpan<'t>,
+    field_null: TemplateSpan<'t>,
+    field_struct_: TemplateSpan<'t>,
+    /* ... */
     ast_primitive: TemplateSpan<'t>,
     ast_message: TemplateSpan<'t>,
     ast_array: TemplateSpan<'t>,
     ast_main: TemplateSpan<'t>,
-    field_string: TemplateSpan<'t>,
-    field_int: TemplateSpan<'t>,
-    field_float: TemplateSpan<'t>,
-    field_bool_: TemplateSpan<'t>,
-    field_array: TemplateSpan<'t>,
-    field_null: TemplateSpan<'t>,
-    field_struct_: TemplateSpan<'t>,
+    /* ... */
+    field_body: TemplateSpan<'t>,
+    /* ... */
+    message_struct: Section<'t>,
 }
 
 /* ==================================== */
@@ -441,13 +446,120 @@ where
                     .add_evaluater("ast", TypeAstNodeEvaluater::new(&field.datatype)),
                 indent,
                 template,
-            );
+            )
+            .unwrap();
+        }
+    }
+}
+
+/* ==================================== */
+/* ==================================== */
+
+pub struct FieldTypeExpander<'s>(&'s TyKind);
+
+impl<'a, W: Write> Evaluater<W> for FieldTypeExpander<'a> {
+    fn evaluate(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &EvaluateOptions,
+        template: &Template<'_>,
+    ) {
+        match self.0 {
+            TyKind::Primitive(prim) => match prim {
+                PrimitiveType::String => {
+                    render_span(&template.field_string, dest, Scope::new(), indent, template);
+                }
+                PrimitiveType::Int => {
+                    render_span(&template.field_int, dest, Scope::new(), indent, template);
+                }
+                PrimitiveType::Float => {
+                    render_span(&template.field_float, dest, Scope::new(), indent, template);
+                }
+                PrimitiveType::Bool => {
+                    render_span(&template.field_bool, dest, Scope::new(), indent, template);
+                }
+            },
+
+            TyKind::UserDefined(name) => {
+                render_span(
+                    &template.field_struct_,
+                    dest,
+                    Scope::new().add_text("T", &name),
+                    indent,
+                    template,
+                );
+            }
+
+            TyKind::Nullable(inner) => {
+                render_span(
+                    &template.field_null,
+                    dest,
+                    Scope::new().add_evaluater("T", FieldTypeExpander(inner.as_ref())),
+                    indent,
+                    template,
+                );
+            }
+
+            TyKind::Array(inner) => {
+                render_span(
+                    &template.field_array,
+                    dest,
+                    Scope::new().add_evaluater("T", FieldTypeExpander(inner.as_ref())),
+                    indent,
+                    template,
+                );
+            }
+        }
+    }
+}
+
+/* ---------------------------------------- */
+
+pub struct FieldEvaluater<'a, F> {
+    fields: F,
+    _phantom: PhantomData<&'a ()>,
+}
+
+impl<'a, F> FieldEvaluater<'a, F> {
+    pub fn new(fields: F) -> Self {
+        Self {
+            fields,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, F, W> Evaluater<W> for FieldEvaluater<'a, F>
+where
+    W: Write,
+    F: Iterator<Item = &'a StructField> + Clone,
+{
+    fn evaluate(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &EvaluateOptions,
+        template: &Template<'_>,
+    ) {
+        while let Some(field) = self.fields.next() {
+            render_span(
+                &template.field_body,
+                dest,
+                Scope::new()
+                    .add_text("name", &field.name)
+                    .add_evaluater("ty", FieldTypeExpander(&field.datatype)),
+                indent,
+                template,
+            )
+            .unwrap();
         }
     }
 }
 
 /* ==================================== */
 
+/* TODO: make sure its result is used */
 fn render_span<W: Write>(
     span: &TemplateSpan,
     dest: &mut W,
