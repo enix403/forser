@@ -330,6 +330,81 @@ impl<'a, W> Scope<'a, W> {
     }
 }
 
+/* ==================================== */
+
+struct TypeAstNodeEvaluater<'a> {
+    ty: &'a TyKind,
+}
+
+impl<'a> TypeAstNodeEvaluater<'a> {
+    fn new(ty: &'a TyKind) -> Self {
+        Self { ty }
+    }
+}
+
+impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
+    fn evaluate(&self, dest: &mut W, indent: u16, opts: &EvaluateOptions, template: &Template<'_>) {
+        match self.ty {
+            TyKind::Primitive(prim) => {
+                render_span(
+                    &template.ast_primitive,
+                    dest,
+                    Scope::new(),
+                    indent,
+                    template,
+                );
+            }
+
+            TyKind::UserDefined(ref name) => {
+                render_span(
+                    &template.ast_message,
+                    dest,
+                    Scope::new().add_text("name", &name),
+                    indent,
+                    template,
+                );
+            }
+
+            TyKind::Array(ref inner) => {
+                render_span(
+                    &template.ast_message,
+                    dest,
+                    Scope::new().add_evaluater("of", TypeAstNodeEvaluater::new(&inner)),
+                    indent,
+                    template,
+                );
+            }
+
+            TyKind::Nullable(ref inner) => {
+                TypeAstNodeEvaluater::new(inner).evaluate(
+                    dest,
+                    indent,
+                    &EvaluateOptions::default(),
+                    template,
+                )
+            }
+        }
+    }
+}
+
+/* ---------------------------------------- */
+
+// pub struct TypeAstEvaluater<F> {
+//     fields: F,
+// }
+
+// impl<F> TypeAstEvaluater<F> {
+//     pub fn new(fields: F) -> Self {
+//         Self { fields }
+//     }
+// }
+
+// impl<'a, W: Write> Evaluater<W> for TypeAstEvaluater<F> {
+// }
+
+
+/* ==================================== */
+
 fn render_span<W: Write>(
     span: &TemplateSpan,
     dest: &mut W,
@@ -408,9 +483,4 @@ impl<'a, W: Write> SpanWriter<'a, W> {
 /* ==================================== */
 /* ==================================== */
 
-pub fn render_template<W: Write>(
-    source: &str,
-    program: &Program,
-    mut dest: W,
-) {
-}
+pub fn render_template<W: Write>(source: &str, program: &Program, mut dest: W) {}
