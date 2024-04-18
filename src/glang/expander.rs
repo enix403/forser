@@ -17,9 +17,9 @@ impl<'a, W: Write> Expander<W> for TextExpander<'a> {
     fn expand(
         &mut self,
         dest: &mut W,
-        indent: u16,
-        opts: &ExpandOptions,
-        template: &Template<'_>,
+        _indent: u16,
+        _opts: &ExpandOptions,
+        _template: &Template<'_>,
     ) -> io::Result<()> {
         write!(dest, "{}", self.0)
     }

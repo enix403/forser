@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::marker::PhantomData;
 
-use crate::items::{PrimitiveType, Program, StructField, TyKind};
+use crate::items::{PrimitiveType, StructField, TyKind};
 
 use super::emit::{newline_delimeters, render_span};
 use super::expander::Expander;
@@ -15,11 +15,11 @@ impl<'a, W: Write> Expander<W> for TypeAstNodeExpander<'a> {
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &ExpandOptions,
+        _opts: &ExpandOptions,
         template: &Template<'_>,
     ) -> io::Result<()> {
         match self.0 {
-            TyKind::Primitive(prim) => {
+            TyKind::Primitive(..) => {
                 render_span(
                     &template.ast_primitive,
                     dest,
@@ -115,7 +115,7 @@ impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &ExpandOptions,
+        _opts: &ExpandOptions,
         template: &Template<'_>,
     ) -> io::Result<()> {
         match self.0 {

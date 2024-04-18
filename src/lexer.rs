@@ -1,5 +1,5 @@
 use crate::token::{self, Token, TokenKind};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::{fs, io};
 
 pub trait Source {

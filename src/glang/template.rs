@@ -46,7 +46,7 @@ fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
         let mut start = 0;
         let mut state = State::Indenting;
 
-        let mut chars = line.char_indices().collect::<Vec<_>>();
+        let chars = line.char_indices().collect::<Vec<_>>();
         let num_chars = chars.len();
 
         let mut i: usize = 0;
@@ -73,7 +73,7 @@ fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
 
                 (State::Literal, c) => {
                     if c == '%' {
-                        if (index > start) {
+                        if index > start {
                             instructions.push(Instruction::Literal(&line[start..index]));
                         }
                         state = State::Variable;

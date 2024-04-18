@@ -110,7 +110,7 @@ where
     }
 
     fn parse_type(&mut self) -> TyKind {
-        let mut ty = if self.next.kind == TokenKind::SquareLeft {
+        let ty = if self.next.kind == TokenKind::SquareLeft {
             self.consume();
             let ty = TyKind::Array(Box::new(self.parse_type()));
             self.consume_expected(TokenKind::SquareRight);

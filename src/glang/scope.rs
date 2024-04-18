@@ -18,7 +18,7 @@ impl<'a, W> Scope<'a, W> {
         }
     }
 
-    pub fn add_text(mut self, name: &'static str, text: &'a str) -> Self
+    pub fn add_text(self, name: &'static str, text: &'a str) -> Self
     where
         W: Write,
     {
