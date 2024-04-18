@@ -10,7 +10,7 @@ use std::{collections::HashMap, io::Write};
 /* ==================================== */
 
 #[derive(Debug, Clone, Default)]
-pub struct EvaluateOptions {
+pub struct ExpandOptions {
     // The delimeter between items emitted from this (multi) variable
     delimeter: Option<char>,
     // Should the delimeter be emitted after the last item ?
@@ -25,7 +25,7 @@ pub enum Instruction<'t> {
 
     Literal(&'t str),
 
-    Evaluate { var: &'t str, opts: EvaluateOptions },
+    Expand { var: &'t str, opts: ExpandOptions },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -99,9 +99,9 @@ fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
                         // ignore the starting %
                         start += percentage_size;
 
-                        instructions.push(Instruction::Evaluate {
+                        instructions.push(Instruction::Expand {
                             var: &line[start..index],
-                            opts: EvaluateOptions::default(),
+                            opts: ExpandOptions::default(),
                         });
 
                         state = State::Literal;
@@ -129,9 +129,9 @@ fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
                             i = new_index;
                         }
 
-                        instructions.push(Instruction::Evaluate {
+                        instructions.push(Instruction::Expand {
                             var: &line[var_start..index],
-                            opts: EvaluateOptions {
+                            opts: ExpandOptions {
                                 delimeter: Some(delimeter),
                                 trailing,
                             },
@@ -233,32 +233,32 @@ impl<'a, W> std::ops::DerefMut for SpanWriter<'a, W> {
 
 /* ==================================== */
 
-trait Evaluater<W> {
-    fn evaluate(
+trait Expander<W> {
+    fn expand(
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &EvaluateOptions,
+        opts: &ExpandOptions,
         template: &Template<'_>,
     );
 }
 
-struct TextEvaluater<'a> {
+struct TextExpander<'a> {
     text: &'a str,
 }
 
-impl<'a> TextEvaluater<'a> {
+impl<'a> TextExpander<'a> {
     fn new(text: &'a str) -> Self {
         Self { text }
     }
 }
 
-impl<'a, W: Write> Evaluater<W> for TextEvaluater<'a> {
-    fn evaluate(
+impl<'a, W: Write> Expander<W> for TextExpander<'a> {
+    fn expand(
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &EvaluateOptions,
+        opts: &ExpandOptions,
         template: &Template<'_>,
     ) {
         write!(dest, "{}", self.text).unwrap();
@@ -268,7 +268,7 @@ impl<'a, W: Write> Evaluater<W> for TextEvaluater<'a> {
 /* ==================================== */
 
 struct ScopeEntry<'a, W> {
-    pub evaluater: Box<dyn Evaluater<W> + 'a>,
+    pub expander: Box<dyn Expander<W> + 'a>,
 }
 
 struct Scope<'a, W> {
@@ -286,23 +286,23 @@ impl<'a, W> Scope<'a, W> {
     where
         W: Write,
     {
-        self.add_evaluater(name, TextEvaluater { text })
+        self.add_expander(name, TextExpander { text })
     }
 
-    pub fn add_evaluater<E: Evaluater<W> + 'a>(mut self, name: &'static str, evaluater: E) -> Self {
+    pub fn add_expander<E: Expander<W> + 'a>(mut self, name: &'static str, expander: E) -> Self {
         self.entries.insert(
             name,
             ScopeEntry {
-                evaluater: Box::new(evaluater),
+                expander: Box::new(expander),
             },
         );
         self
     }
 
-    pub fn get_entry(&mut self, name: &'_ str) -> &'_ mut dyn Evaluater<W> {
+    pub fn get_expander(&mut self, name: &'_ str) -> &'_ mut dyn Expander<W> {
         self.entries
             .get_mut(name)
-            .map(|entry| entry.evaluater.as_mut())
+            .map(|entry| entry.expander.as_mut())
             .unwrap_or_else(|| {
                 panic!("Unknown variable %{}%", name);
             })
@@ -315,7 +315,7 @@ impl<'a, W> Scope<'a, W> {
 fn newline_delimeters<I, F, W>(
     dest: &mut W,
     items: impl Iterator<Item = I>,
-    opts: &EvaluateOptions,
+    opts: &ExpandOptions,
     indent: u16,
     mut func: F,
 ) where
@@ -343,25 +343,26 @@ fn newline_delimeters<I, F, W>(
 /* ==================================== */
 /* ==================================== */
 
-struct TypeAstNodeEvaluater<'a> {
-    ty: &'a TyKind,
-}
+// struct TypeAstNodeExpander<'a> {
+    // ty: &'a TyKind,
+// }
+struct TypeAstNodeExpander<'a>(&'a TyKind);
 
-impl<'a> TypeAstNodeEvaluater<'a> {
-    fn new(ty: &'a TyKind) -> Self {
-        Self { ty }
-    }
-}
+// impl<'a> TypeAstNodeExpander<'a> {
+    // fn new(ty: &'a TyKind) -> Self {
+        // Self { ty }
+    // }
+// }
 
-impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
-    fn evaluate(
+impl<'a, W: Write> Expander<W> for TypeAstNodeExpander<'a> {
+    fn expand(
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &EvaluateOptions,
+        opts: &ExpandOptions,
         template: &Template<'_>,
     ) {
-        match self.ty {
+        match self.0 {
             TyKind::Primitive(prim) => {
                 render_span(
                     &template.ast_primitive,
@@ -386,16 +387,16 @@ impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
                 render_span(
                     &template.ast_array,
                     dest,
-                    Scope::new().add_evaluater("of", TypeAstNodeEvaluater::new(&inner)),
+                    Scope::new().add_expander("of", TypeAstNodeExpander(&inner)),
                     indent,
                     template,
                 );
             }
 
-            TyKind::Nullable(ref inner) => TypeAstNodeEvaluater::new(inner).evaluate(
+            TyKind::Nullable(ref inner) => TypeAstNodeExpander(inner).expand(
                 dest,
                 indent,
-                &EvaluateOptions::default(),
+                &ExpandOptions::default(),
                 template,
             ),
         }
@@ -404,12 +405,12 @@ impl<'a, W: Write> Evaluater<W> for TypeAstNodeEvaluater<'a> {
 
 /* ---------------------------------------- */
 
-pub struct TypeAstEvaluater<'a, F> {
+pub struct TypeAstExpander<'a, F> {
     fields: F,
     _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a, F> TypeAstEvaluater<'a, F> {
+impl<'a, F> TypeAstExpander<'a, F> {
     pub fn new(fields: F) -> Self {
         Self {
             fields,
@@ -418,16 +419,16 @@ impl<'a, F> TypeAstEvaluater<'a, F> {
     }
 }
 
-impl<'a, F, W> Evaluater<W> for TypeAstEvaluater<'a, F>
+impl<'a, F, W> Expander<W> for TypeAstExpander<'a, F>
 where
     W: Write,
     F: Iterator<Item = &'a StructField> + Clone,
 {
-    fn evaluate(
+    fn expand(
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &EvaluateOptions,
+        opts: &ExpandOptions,
         template: &Template<'_>,
     ) {
         newline_delimeters(dest, self.fields.clone(), opts, indent, |field, dest| {
@@ -436,7 +437,7 @@ where
                 dest,
                 Scope::new()
                     .add_text("name", &field.name)
-                    .add_evaluater("ast", TypeAstNodeEvaluater::new(&field.datatype)),
+                    .add_expander("ast", TypeAstNodeExpander(&field.datatype)),
                 indent,
                 template,
             )
@@ -448,14 +449,14 @@ where
 /* ==================================== */
 /* ==================================== */
 
-pub struct FieldTypeEvaluater<'s>(&'s TyKind);
+pub struct FieldTypeExpander<'s>(&'s TyKind);
 
-impl<'a, W: Write> Evaluater<W> for FieldTypeEvaluater<'a> {
-    fn evaluate(
+impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
+    fn expand(
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &EvaluateOptions,
+        opts: &ExpandOptions,
         template: &Template<'_>,
     ) {
         match self.0 {
@@ -488,7 +489,7 @@ impl<'a, W: Write> Evaluater<W> for FieldTypeEvaluater<'a> {
                 render_span(
                     &template.field_null,
                     dest,
-                    Scope::new().add_evaluater("T", FieldTypeEvaluater(inner.as_ref())),
+                    Scope::new().add_expander("T", FieldTypeExpander(inner.as_ref())),
                     indent,
                     template,
                 );
@@ -498,7 +499,7 @@ impl<'a, W: Write> Evaluater<W> for FieldTypeEvaluater<'a> {
                 render_span(
                     &template.field_array,
                     dest,
-                    Scope::new().add_evaluater("T", FieldTypeEvaluater(inner.as_ref())),
+                    Scope::new().add_expander("T", FieldTypeExpander(inner.as_ref())),
                     indent,
                     template,
                 );
@@ -509,12 +510,12 @@ impl<'a, W: Write> Evaluater<W> for FieldTypeEvaluater<'a> {
 
 /* ---------------------------------------- */
 
-pub struct FieldEvaluater<'a, F> {
+pub struct FieldExpander<'a, F> {
     fields: F,
     _phantom: PhantomData<&'a ()>,
 }
 
-impl<'a, F> FieldEvaluater<'a, F> {
+impl<'a, F> FieldExpander<'a, F> {
     pub fn new(fields: F) -> Self {
         Self {
             fields,
@@ -523,16 +524,16 @@ impl<'a, F> FieldEvaluater<'a, F> {
     }
 }
 
-impl<'a, F, W> Evaluater<W> for FieldEvaluater<'a, F>
+impl<'a, F, W> Expander<W> for FieldExpander<'a, F>
 where
     W: Write,
     F: Iterator<Item = &'a StructField> + Clone,
 {
-    fn evaluate(
+    fn expand(
         &mut self,
         dest: &mut W,
         indent: u16,
-        opts: &EvaluateOptions,
+        opts: &ExpandOptions,
         template: &Template<'_>,
     ) {
         newline_delimeters(dest, self.fields.clone(), opts, indent, |field, dest| {
@@ -541,7 +542,7 @@ where
                 dest,
                 Scope::new()
                     .add_text("name", &field.name)
-                    .add_evaluater("ty", FieldTypeEvaluater(&field.datatype)),
+                    .add_expander("ty", FieldTypeExpander(&field.datatype)),
                 indent,
                 template,
             )
@@ -579,9 +580,9 @@ fn render_span<W: Write>(
             Instruction::Literal(val) => {
                 writer.write_str(val)?;
             }
-            Instruction::Evaluate { var, opts } => {
-                let evaluater = scope.get_entry(var);
-                evaluater.evaluate(&mut writer, indent + current_line_indent, opts, template);
+            Instruction::Expand { var, opts } => {
+                let expander = scope.get_expander(var);
+                expander.expand(&mut writer, indent + current_line_indent, opts, template);
             }
         }
     }
@@ -737,8 +738,8 @@ pub mod driver {
         for struct_ in program.structs.iter() {
             let scope = Scope::new()
                 .add_text("name", &struct_.name)
-                .add_evaluater("type_ast", TypeAstEvaluater::new(struct_.fields.iter()))
-                .add_evaluater("fields", FieldEvaluater::new(struct_.fields.iter()));
+                .add_expander("type_ast", TypeAstExpander::new(struct_.fields.iter()))
+                .add_expander("fields", FieldExpander::new(struct_.fields.iter()));
 
             render_span(&template.message_struct, &mut dest, scope, 0, &template);
 
