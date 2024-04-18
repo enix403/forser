@@ -203,6 +203,39 @@ struct Template<'t> {
 
 /* ==================================== */
 
+pub struct SpanWriter<'a, W> {
+    inner: &'a mut W,
+}
+
+impl<'a, W: Write> SpanWriter<'a, W> {
+    pub fn new(dest: &'a mut W) -> Self {
+        Self { inner: dest }
+    }
+
+    pub fn write_char(&mut self, c: char) -> io::Result<()> {
+        write!(self.inner, "{}", c)
+    }
+
+    pub fn write_str(&mut self, s: &str) -> io::Result<()> {
+        write!(self.inner, "{}", s)
+    }
+
+    pub fn do_indent(&mut self, size: u16) -> io::Result<()> {
+        // TODO: optimize
+        for _ in 0..size {
+            self.write_char(' ')?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get_mut_io_writer(&mut self) -> &'_ mut W {
+        &mut self.inner
+    }
+}
+
+/* ==================================== */
+
 trait Evaluater<W> {
     fn evaluate(
         &mut self,
@@ -279,6 +312,38 @@ impl<'a, W> Scope<'a, W> {
     }
 }
 
+/* ==================================== */
+/* ==================================== */
+
+fn newline_delimeters<I, F, W>(
+    dest: &mut W,
+    items: impl Iterator<Item = I>,
+    opts: &EvaluateOptions,
+    indent: u16,
+    mut func: F,
+) where
+    W: Write,
+    F: FnMut(I, &mut W)
+{
+    let mut writer = SpanWriter::new(dest);
+    for (index, item) in items.enumerate() {
+        if index != 0 {
+            if let Some(delim) = opts.delimeter {
+                // TDOD: to string
+                writer.write_char(delim);
+            }
+            writer.write_char('\n');
+            writer.do_indent(indent);
+        }
+        func(item, writer.get_mut_io_writer());
+    }
+
+    if opts.trailing && opts.delimeter.is_some() {
+        writer.write_char(opts.delimeter.unwrap());
+    }
+}
+
+/* ==================================== */
 /* ==================================== */
 
 struct TypeAstNodeEvaluater<'a> {
@@ -368,7 +433,7 @@ where
         opts: &EvaluateOptions,
         template: &Template<'_>,
     ) {
-        while let Some(field) = self.fields.next() {
+        newline_delimeters(dest, self.fields.clone(), opts, indent, |field, dest| {
             render_span(
                 &template.ast_main,
                 dest,
@@ -379,7 +444,7 @@ where
                 template,
             )
             .unwrap();
-        }
+        });
     }
 }
 
@@ -473,7 +538,7 @@ where
         opts: &EvaluateOptions,
         template: &Template<'_>,
     ) {
-        while let Some(field) = self.fields.next() {
+        newline_delimeters(dest, self.fields.clone(), opts, indent, |field, dest| {
             render_span(
                 &template.field_body,
                 dest,
@@ -484,7 +549,7 @@ where
                 template,
             )
             .unwrap();
-        }
+        });
     }
 }
 
@@ -530,37 +595,6 @@ fn render_span<W: Write>(
     }
 
     Ok(())
-}
-
-pub struct SpanWriter<'a, W> {
-    inner: &'a mut W,
-}
-
-impl<'a, W: Write> SpanWriter<'a, W> {
-    pub fn new(dest: &'a mut W) -> Self {
-        Self { inner: dest }
-    }
-
-    pub fn write_char(&mut self, c: char) -> io::Result<()> {
-        write!(self.inner, "{}", c)
-    }
-
-    pub fn write_str(&mut self, s: &str) -> io::Result<()> {
-        write!(self.inner, "{}", s)
-    }
-
-    pub fn do_indent(&mut self, size: u16) -> io::Result<()> {
-        // TODO: optimize
-        for _ in 0..size {
-            self.write_char(' ')?;
-        }
-
-        Ok(())
-    }
-
-    pub fn get_mut_io_writer(&mut self) -> &'_ mut W {
-        &mut self.inner
-    }
 }
 
 /* ==================================== */
