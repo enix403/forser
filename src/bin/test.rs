@@ -19,12 +19,9 @@ fn get_test_program() -> Program {
 }
 
 fn main() {
-    // let template = Template::compile(CODE);
     let program = get_test_program();
 
-    // template.print(&program);
-
-    glang::driver::render_template(CODE, &program, std::io::stdout());
+    glang::render_template(CODE, &program, std::io::stdout());
 
 }
 
