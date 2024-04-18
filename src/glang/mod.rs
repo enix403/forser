@@ -455,9 +455,9 @@ where
 /* ==================================== */
 /* ==================================== */
 
-pub struct FieldTypeExpander<'s>(&'s TyKind);
+pub struct FieldTypeEvaluater<'s>(&'s TyKind);
 
-impl<'a, W: Write> Evaluater<W> for FieldTypeExpander<'a> {
+impl<'a, W: Write> Evaluater<W> for FieldTypeEvaluater<'a> {
     fn evaluate(
         &mut self,
         dest: &mut W,
@@ -495,7 +495,7 @@ impl<'a, W: Write> Evaluater<W> for FieldTypeExpander<'a> {
                 render_span(
                     &template.field_null,
                     dest,
-                    Scope::new().add_evaluater("T", FieldTypeExpander(inner.as_ref())),
+                    Scope::new().add_evaluater("T", FieldTypeEvaluater(inner.as_ref())),
                     indent,
                     template,
                 );
@@ -505,7 +505,7 @@ impl<'a, W: Write> Evaluater<W> for FieldTypeExpander<'a> {
                 render_span(
                     &template.field_array,
                     dest,
-                    Scope::new().add_evaluater("T", FieldTypeExpander(inner.as_ref())),
+                    Scope::new().add_evaluater("T", FieldTypeEvaluater(inner.as_ref())),
                     indent,
                     template,
                 );
@@ -548,7 +548,7 @@ where
                 dest,
                 Scope::new()
                     .add_text("name", &field.name)
-                    .add_evaluater("ty", FieldTypeExpander(&field.datatype)),
+                    .add_evaluater("ty", FieldTypeEvaluater(&field.datatype)),
                 indent,
                 template,
             )
