@@ -252,6 +252,8 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
     let sections = compile_template_sections(source);
     let mut template = Template::default();
 
+    template.prelude = sections.prelude;
+
     stream_parse_visitors(sections.types, |name, span| match name {
         "string" => template.field_string = span,
         "int" => template.field_int = span,

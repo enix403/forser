@@ -1,15 +1,11 @@
-use std::collections::HashMap;
-use std::fmt::Write as _;
 use std::fs::OpenOptions;
-use std::io::{self, Write};
+use std::io::Write as _;
 use std::path::Path;
-use std::write;
 
-use serde::Serialize;
-use tinytemplate::TinyTemplate;
-
-use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
+use crate::items::Program;
 use crate::language::Language;
+
+use crate::glang::render_template;
 
 pub struct PythonGenerator {
     _phantom: (),
@@ -33,154 +29,12 @@ impl Language for PythonGenerator {
             .open(outdir.join("main.py"))
             .expect("Failed to open file");
 
-        PythonGeneratorInner::new(dest).generate(program);
+        render_template(GLANG_TEMPLATE, program, dest).unwrap();
     }
 }
 
-struct PythonGeneratorInner<W> {
-    dest: W,
-}
-
-#[derive(Serialize)]
-struct RenderedField<'a> {
-    name: &'a str,
-    info: String,
-    ty: String,
-}
-
-#[derive(Serialize, Clone)]
-enum PyFieldType {
-    Primitve,
-    Array(Box<PyFieldType>),
-    Message(String),
-}
-
-impl PyFieldType {
-    fn write_ts_field_type(&self, dest: &mut String) {
-        match self {
-            PyFieldType::Primitve => {
-                write!(dest, "TyKind('primitive')").unwrap();
-            }
-            PyFieldType::Message(name) => {
-                write!(dest, "TyKind('message', ctor=\"{}\")", name).unwrap();
-            }
-            PyFieldType::Array(ref inner) => {
-                write!(dest, "TyKind('array', of=");
-                inner.write_ts_field_type(&mut *dest);
-                write!(dest, ")");
-            }
-        };
-    }
-}
-
-#[derive(Serialize)]
-struct StructContext<'a> {
-    name: &'a str,
-    fields: Vec<RenderedField<'a>>,
-}
-
-impl From<&TyKind> for PyFieldType {
-    fn from(value: &TyKind) -> Self {
-        match value {
-            TyKind::Primitive(..) => PyFieldType::Primitve,
-            TyKind::UserDefined(name) => PyFieldType::Message(name.clone()),
-            TyKind::Array(inner) => PyFieldType::Array(Box::new(inner.as_ref().into())),
-            TyKind::Nullable(inner) => inner.as_ref().into(),
-        }
-    }
-}
-
-impl<W: Write> PythonGeneratorInner<W> {
-    pub fn new(dest: W) -> Self {
-        Self { dest }
-    }
-
-    fn render_static_type(dest: &mut String, ty: &TyKind) -> std::fmt::Result {
-        match ty {
-            TyKind::Primitive(prim) => match prim {
-                PrimitiveType::String => write!(dest, "str")?,
-                PrimitiveType::Int => write!(dest, "int")?,
-                PrimitiveType::Float => write!(dest, "float")?,
-                PrimitiveType::Bool => write!(dest, "bool")?,
-            },
-            TyKind::UserDefined(ref name) => write!(dest, "{}", name)?,
-            TyKind::Array(ref ty) => {
-                write!(dest, "List[")?;
-                Self::render_static_type(dest, ty)?;
-                write!(dest, "]")?
-            }
-            TyKind::Nullable(ref ty) => {
-                write!(dest, "Optional[")?;
-                Self::render_static_type(dest, ty)?;
-                write!(dest, "]")?
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_struct(&mut self, struct_: &StructDefinition) -> io::Result<()> {
-        const TEMPLATE: &'static str = r#"
-# =========================================== #
-        
-_{name}Fields: list[StructField] = [
-{{ for field in fields }}
-  StructField("{field.name}", ty={field.info}),
-{{ endfor }}
-]
-@dataclass
-class {name}(StructMessage):
-{{ for field in fields }}    {field.name}: {field.ty}
-{{ endfor }}
-_fields_map[{name}] = _{name}Fields
-_message_map['{name}'] = {name}
-"#;
-
-        let mut tt = TinyTemplate::new();
-        tt.add_template("main", TEMPLATE).unwrap();
-        tt.set_default_formatter(&tinytemplate::format_unescaped);
-
-        let context = StructContext {
-            name: &struct_.name,
-            fields: struct_
-                .fields
-                .iter()
-                .map(|field| RenderedField {
-                    name: &field.name,
-                    info: {
-                        let mut info = String::new();
-                        let ts_field: PyFieldType = (&field.datatype).into();
-                        ts_field.write_ts_field_type(&mut info);
-                        info
-                    },
-                    ty: {
-                        let mut ty = String::new();
-                        Self::render_static_type(&mut ty, &field.datatype).unwrap();
-                        ty
-                    },
-                })
-                .collect(),
-        };
-
-        let rendered = tt.render("main", &context).unwrap();
-
-        write!(&mut self.dest, "{}", rendered)?;
-
-        Ok(())
-    }
-
-    fn generate(&mut self, program: &Program) -> io::Result<()> {
-        write!(&mut self.dest, "{}", HEADER.trim_start())?;
-
-        for struct_ in program.structs.iter() {
-            self.write_struct(struct_);
-        }
-
-        Ok(())
-    }
-}
-
-const HEADER: &'static str = r#"
+static GLANG_TEMPLATE: &'static str = r#"
+#prelude
 from __future__ import annotations
 from typing import Literal, Optional, cast, Type, TypeVar, Union, Dict, Any, List
 from dataclasses import dataclass
@@ -284,4 +138,62 @@ def unpack_message(message_type: Type[T], serialized: str) -> T:
     )
 
     return cast(T, result)
+#end/prelude
+
+// -------------------------------------------------------------- 
+
+#types
+
+string { str }
+int { int }
+float { float }
+bool { bool }
+array { List[%T%] }
+null { Optional[%T%] }
+struct { %T% }
+
+#end/types
+
+// -------------------------------------------------------------- 
+
+#type_visitor
+
+primitive { TyKind('primitive') }
+
+message { TyKind('message', ctor="%name%") }
+
+array { TyKind(
+    'array',
+    of=%of%
+) }
+
+main { StructField(
+    "%name%",
+    ty=%ast%
+) }
+
+#end/type_visitor
+
+// -------------------------------------------------------------- 
+
+#field_visitor
+%name%: %ty%
+#end/field_visitor
+
+// -------------------------------------------------------------- 
+
+#message_struct
+
+_%name%Fields: list[StructField] = [
+    %type_ast/,%
+]
+
+@dataclass
+class %name%(StructMessage):
+    %fields%
+
+_fields_map[%name%] = _%name%Fields
+_message_map['%name%'] = %name%
+
+#end/message_struct
 "#;
