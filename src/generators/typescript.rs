@@ -21,6 +21,7 @@ impl Language for TypeScriptGenerator {
     fn lang_id(&self) -> &'static str {
         "ts"
     }
+
     fn generate(&self, program: &Program, outdir: &Path) {
         let dest = OpenOptions::new()
             .write(true)
@@ -28,6 +29,8 @@ impl Language for TypeScriptGenerator {
             .truncate(true)
             .open(outdir.join("main.ts"))
             .expect("Failed to open file");
+
+        println!("{:#?}", program.enums);
 
         render_template(include_str!("typescript.gx"), program, dest).unwrap();
     }

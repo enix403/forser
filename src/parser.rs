@@ -1,4 +1,6 @@
-use crate::items::{PrimitiveType, Program, StructDefinition, StructField, TyKind};
+use crate::items::{
+    EnumDefinition, EnumVariant, PrimitiveType, Program, StructDefinition, StructField, TyKind,
+};
 use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
 use std::collections::{HashMap, HashSet};
@@ -34,6 +36,7 @@ pub struct Parser<L> {
 
     // Items
     structs: HashMap<String, StructDefinition>,
+    enums: HashMap<String, EnumDefinition>,
 
     // Validation
     /// Set of user defined types yet to be found
@@ -69,6 +72,7 @@ where
             lexer,
             errors: vec![],
             structs: HashMap::new(),
+            enums: HashMap::new(),
             pending_types: HashSet::new(),
         }
     }
@@ -106,7 +110,7 @@ where
     }
 
     fn is_valid_udt(&self, name: &str) -> bool {
-        return self.structs.contains_key(name);
+        self.structs.contains_key(name) || self.enums.contains_key(name)
     }
 
     fn parse_type(&mut self) -> TyKind {
@@ -154,12 +158,12 @@ where
                 .push(ParseError::RedefinedType(struct_name.clone()));
         }
 
-        self.consume_expected(TokenKind::BraceLeft);
-
         let mut struct_ = StructDefinition {
             name: struct_name,
             fields: vec![],
         };
+
+        self.consume_expected(TokenKind::BraceLeft);
 
         while !(matches!(self.next.kind, TokenKind::BraceRight)) {
             let field_name = self.parse_ident();
@@ -190,11 +194,56 @@ where
         self.structs.insert(struct_.name.clone(), struct_);
     }
 
+    fn parse_enum(&mut self) {
+        // TODO: a lot of logic is copied from parse_struct(). Remove duplication
+
+        let enum_name = self.parse_ident();
+
+        if !guards::is_reserved(&enum_name) {
+            self.errors.push(ParseError::InvalidUdt(enum_name.clone()));
+        } else if self.is_valid_udt(&enum_name) {
+            self.errors
+                .push(ParseError::RedefinedType(enum_name.clone()));
+        }
+
+        let mut enum_ = EnumDefinition {
+            name: enum_name,
+            variants: vec![],
+        };
+
+        let mut value = 0;
+
+        self.consume_expected(TokenKind::BraceLeft);
+
+        while !(matches!(self.next.kind, TokenKind::BraceRight)) {
+            let variant_name = self.parse_ident();
+
+            enum_.variants.push(EnumVariant {
+                name: variant_name,
+                value,
+            });
+
+            value += 1;
+
+            if matches!(self.next.kind, TokenKind::Comma) {
+                self.consume();
+            } else {
+                break;
+            }
+        }
+
+        self.consume_expected(TokenKind::BraceRight);
+
+        self.pending_types.remove(&enum_.name);
+        self.enums.insert(enum_.name.clone(), enum_);
+    }
+
     pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {
         loop {
             self.consume();
             match self.current.kind {
                 TokenKind::Struct => self.parse_struct(),
+                TokenKind::Enum => self.parse_enum(),
                 TokenKind::Eof => break,
                 _ => self.syntax_error(None),
             }
@@ -211,6 +260,7 @@ where
         } else {
             Ok(Program {
                 structs: self.structs.into_values().collect(),
+                enums: self.enums.into_values().collect(),
             })
         }
     }

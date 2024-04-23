@@ -2,6 +2,7 @@
 pub enum TokenKind {
     // Keywords
     Struct,
+    Enum,
 
     // Punctuation
     BraceLeft,
@@ -28,8 +29,8 @@ pub struct Token {
     pub kind: TokenKind,
     pub pos_start: i64,
     pub pos_end: i64,
-    pub column: i64,
     pub line: i64,
+    pub column: i64,
 }
 
 impl Token {
@@ -47,6 +48,7 @@ impl Token {
 pub fn to_keyword(ident: &str) -> Option<TokenKind> {
     match ident {
         "struct" => Some(TokenKind::Struct),
+        "enum" => Some(TokenKind::Enum),
         _ => None,
     }
 }

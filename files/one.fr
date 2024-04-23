@@ -1,8 +1,12 @@
-struct Foo {
-  x: int?,
-  bar: [[Bar]],
+enum Direction {
+    North,
+    South,
+    East,
+    West
 }
 
-struct Bar {
-  y: int
+struct AppData {
+    hello: string,
+    age: int,
+    dir: Direction
 }

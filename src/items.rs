@@ -34,6 +34,19 @@ pub struct StructDefinition {
 }
 
 #[derive(Debug, Clone)]
+pub struct EnumVariant {
+    pub name: String,
+    pub value: i32
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumDefinition {
+    pub name: String,
+    pub variants: Vec<EnumVariant>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Program {
     pub structs: Vec<StructDefinition>,
+    pub enums: Vec<EnumDefinition>,
 }
