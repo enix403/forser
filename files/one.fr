@@ -1,8 +1,8 @@
 enum Direction {
-    Left,
-    Up,
-    Right,
-    Down
+    Left = "Hello",
+    Up = "World",
+    Right = "Nice",
+    Down = "Cool"
 }
 
 struct AppData {

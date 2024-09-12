@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::marker::PhantomData;
 
-use crate::items::{PrimitiveType, StructField, TyKind, EnumVariant};
+use crate::items::{EnumVariant, EnumVariantValue, PrimitiveType, StructField, TyKind};
 
 use super::emit::{newline_delimeters, render_span};
 use super::expander::Expander;
@@ -144,7 +144,12 @@ where
         template: &Template<'_>,
     ) -> io::Result<()> {
         newline_delimeters(dest, self.variants.clone(), opts, indent, |variant, dest| {
-            let value = format!("{}", variant.value);
+            // let value = match format!("{}", variant.value);
+            let value = match &variant.value {
+                EnumVariantValue::Int(val) => val.to_string(),
+                EnumVariantValue::String(val) => format!("\"{}\"", val)
+            };
+
             render_span(
                 &template.enum_variant,
                 dest,

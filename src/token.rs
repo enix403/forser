@@ -12,9 +12,14 @@ pub enum TokenKind {
     Comma,
     Colon,
     QuestionMark,
+    Equal,
 
     // Identifiers
     Identifier(String),
+
+    // Literals
+    StringLiteral(String),
+    IntLiteral(i32),
 
     // Unknowm
     Unknowm(char),

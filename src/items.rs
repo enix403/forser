@@ -34,9 +34,15 @@ pub struct StructDefinition {
 }
 
 #[derive(Debug, Clone)]
+pub enum EnumVariantValue {
+    Int(i32),
+    String(String)
+}
+
+#[derive(Debug, Clone)]
 pub struct EnumVariant {
     pub name: String,
-    pub value: i32
+    pub value: EnumVariantValue
 }
 
 #[derive(Debug, Clone)]

@@ -1,6 +1,8 @@
-use crate::token::{self, Token, TokenKind};
+use std::convert::TryFrom;
 use std::path::Path;
 use std::{fs, io};
+
+use crate::token::{self, Token, TokenKind};
 
 pub trait Source {
     fn next_char(&mut self) -> Option<char>;
@@ -124,11 +126,22 @@ where
                 ']' => TokenKind::SquareRight,
                 ',' => TokenKind::Comma,
                 ':' => TokenKind::Colon,
+                '=' => TokenKind::Equal,
                 '?' => TokenKind::QuestionMark,
                 'a'..='z' | 'A'..='Z' => {
                     let ident: String = self.consume_identifier();
                     token::to_keyword(&ident).unwrap_or_else(|| TokenKind::Identifier(ident))
                 }
+                // TODO: support negative numbers
+                '0'..='9' => {
+                    let val = self.cosume_lit_int();
+                    TokenKind::IntLiteral(val)
+                }
+                '"' => {
+                    let val = self.cosume_lit_str();
+                    TokenKind::StringLiteral(val)
+                }
+
                 x => TokenKind::Unknowm(x),
             };
 
@@ -154,6 +167,42 @@ where
         }
 
         ident
+    }
+
+    fn cosume_lit_int(&mut self) -> i32 {
+        let mut val: i32 = 0;
+
+        loop {
+            let d = self.current.and_then(|c| c.to_digit(10)).unwrap();
+            let d = i32::try_from(d).unwrap();
+
+            val = val * 10 + d;
+
+            if let Some(ds @ '0'..='9') = self.next {
+                self.consume();
+            } else {
+                break;
+            }
+        }
+
+        val
+    }
+
+    fn cosume_lit_str(&mut self) -> String {
+        let mut val = String::new();
+
+        loop {
+            self.consume();
+
+            match self.current {
+                None | Some('"') => break,
+                _ => {}
+            }
+
+            val.push(self.current.unwrap() as _);
+        }
+
+        val
     }
 }
 

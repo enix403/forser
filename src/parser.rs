@@ -1,5 +1,6 @@
 use crate::items::{
-    EnumDefinition, EnumVariant, PrimitiveType, Program, StructDefinition, StructField, TyKind,
+    EnumDefinition, EnumVariant, EnumVariantValue, PrimitiveType, Program, StructDefinition,
+    StructField, TyKind,
 };
 use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
@@ -14,6 +15,9 @@ pub enum ParseError {
         expected: Option<TokenKind>,
         found: Token,
     },
+
+    #[error("\"{0}\"")]
+    Custom(String),
 
     #[error("Recursive Type \"{0}\" has infinite size")]
     RecursiveType(String),
@@ -87,6 +91,10 @@ where
             expected,
             found: self.current.clone(),
         });
+    }
+
+    fn custom_error(&mut self, message: &str) {
+        self.errors.push(ParseError::Custom(message.into()));
     }
 
     fn consume_expected(&mut self, expected: TokenKind) {
@@ -211,19 +219,58 @@ where
             variants: vec![],
         };
 
-        let mut value = 0;
-
         self.consume_expected(TokenKind::BraceLeft);
+
+        let mut curr_int_value = 0;
+        let mut is_int_enum = true;
+        let mut type_decided = false;
 
         while !(matches!(self.next.kind, TokenKind::BraceRight)) {
             let variant_name = self.parse_ident();
+            let mut variant_value: EnumVariantValue = EnumVariantValue::Int(0);
+
+            if matches!(self.next.kind, TokenKind::Equal) {
+                self.consume();
+
+                match self.next.kind.clone() {
+                    TokenKind::StringLiteral(val) => {
+                        self.consume();
+                        if type_decided && is_int_enum {
+                            self.custom_error("Expected an int, found string");
+                        } else {
+                            variant_value = EnumVariantValue::String(val.clone());
+                            is_int_enum = false;
+                        }
+                    }
+                    TokenKind::IntLiteral(val) => {
+                        self.consume();
+                        
+                        if type_decided && !is_int_enum {
+                            self.custom_error("Expected a string, found int");
+                        } else {
+                            variant_value = EnumVariantValue::Int(val);
+                            curr_int_value = val + 1;
+                        }
+                    }
+                    _ => {
+                        self.syntax_error(None);
+                    }
+                }
+            } else {
+                if !type_decided || is_int_enum {
+                    variant_value = EnumVariantValue::Int(curr_int_value);
+                    curr_int_value += 1;
+                } else {
+                    self.custom_error("Expected a string");
+                }
+            }
+
+            type_decided = true;
 
             enum_.variants.push(EnumVariant {
                 name: variant_name,
-                value,
+                value: variant_value,
             });
-
-            value += 1;
 
             if matches!(self.next.kind, TokenKind::Comma) {
                 self.consume();
