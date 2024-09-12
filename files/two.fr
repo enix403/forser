@@ -4,24 +4,23 @@ struct LoginRequest {
 }
 
 struct AuthKeys {
-    access_token: string,
-    refresh_token: string
+    accessToken: string,
+    refreshToken: string
 }
 
 struct UserProfile {
     name: string,
-    profile_picture_id: string?,
+    profilePictureId: string?,
 }
 
 struct Role {
     slug: string,
-    grant_level: int
+    grantLevel: int
 }
 
 struct LoginResult {
     keys: AuthKeys,
     profile: UserProfile,
-    last_logged_in: int,
+    lastLoggedIn: int,
     roles: [Role]
 }
-

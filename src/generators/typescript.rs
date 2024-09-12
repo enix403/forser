@@ -30,8 +30,6 @@ impl Language for TypeScriptGenerator {
             .open(outdir.join("main.ts"))
             .expect("Failed to open file");
 
-        println!("{:#?}", program.enums);
-
         render_template(include_str!("typescript.gx"), program, dest).unwrap();
     }
 }

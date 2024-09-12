@@ -1,8 +1,0 @@
-struct Foo {
-  x: int?,
-  bar: [[Bar]],
-}
-
-struct Bar {
-  y: int
-}
