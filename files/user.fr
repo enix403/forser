@@ -1,0 +1,31 @@
+enum RoleKind {
+    Admin = "admin",
+    Regular = "regular"
+}
+
+struct Role {
+    kind: RoleKind,
+    source: string,
+}
+
+struct LoginRequest {
+    username: string,
+    password: string,
+}
+
+struct AuthKeys {
+    accessToken: string,
+    refreshToken: string
+}
+
+struct UserProfile {
+    name: string,
+    profilePictureId: string?,
+}
+
+struct LoginResult {
+    keys: AuthKeys?,
+    profile: UserProfile,
+    lastLoggedIn: int,
+    roles: [Role]
+}
