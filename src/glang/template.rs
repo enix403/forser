@@ -163,8 +163,12 @@ struct TemplateSections<'a> {
     prelude: &'a str,
     types: &'a str,
     // type_visitor: &'a str,
+    // structs
     field_visitor: &'a str,
     message_struct: &'a str,
+    // enums
+    enum_variant_visitor: &'a str,
+    message_enum: &'a str,
 }
 
 fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
@@ -202,7 +206,9 @@ fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
                         // "type_visitor" => &mut sections.type_visitor,
                         "field_visitor" => &mut sections.field_visitor,
                         "message_struct" => &mut sections.message_struct,
-                        _ => panic!("Unknown Section"),
+                        "enum_variant_visitor" => &mut sections.enum_variant_visitor,
+                        "message_enum" => &mut sections.message_enum,
+                        _ => panic!("Unknown Section \"{}\"", name),
                     });
 
                     start = current_new;
@@ -229,7 +235,7 @@ fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
 #[derive(Debug, Clone, Default)]
 pub struct Template<'t> {
     pub prelude: &'t str,
-
+    
     pub field_string: TemplateSpan<'t>,
     pub field_int: TemplateSpan<'t>,
     pub field_float: TemplateSpan<'t>,
@@ -237,15 +243,20 @@ pub struct Template<'t> {
     pub field_array: TemplateSpan<'t>,
     pub field_null: TemplateSpan<'t>,
     pub field_struct: TemplateSpan<'t>,
+
     /* ... */
     // pub ast_primitive: TemplateSpan<'t>,
     // pub ast_message: TemplateSpan<'t>,
     // pub ast_array: TemplateSpan<'t>,
     // pub ast_main: TemplateSpan<'t>,
-    /* ... */
+
+    /* Structs */
     pub field_body: TemplateSpan<'t>,
-    /* ... */
     pub message_struct: TemplateSpan<'t>,
+
+    /* Enums */
+    pub enum_variant: TemplateSpan<'t>,
+    pub message_enum: TemplateSpan<'t>,
 }
 
 pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
@@ -275,6 +286,9 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
 
     template.field_body = compile_span(sections.field_visitor);
     template.message_struct = compile_span(sections.message_struct);
+
+    template.enum_variant = compile_span(sections.enum_variant_visitor);
+    template.message_enum = compile_span(sections.message_enum);
 
     template
 }
