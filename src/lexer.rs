@@ -124,6 +124,8 @@ where
                 '}' => TokenKind::BraceRight,
                 '[' => TokenKind::SquareLeft,
                 ']' => TokenKind::SquareRight,
+                '<' => TokenKind::AngleLeft,
+                '>' => TokenKind::AngleRight,
                 ',' => TokenKind::Comma,
                 ':' => TokenKind::Colon,
                 '=' => TokenKind::Equal,

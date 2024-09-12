@@ -1,12 +1,18 @@
 enum Direction {
-    Right = 7,
+    Right = 1,
     Left,
     Up,
     Down
 }
 
+struct Location {
+    x: int,
+    y: int
+}
+
 struct AppData {
-    hello: string,
-    age: int,
-    dir: [Direction?]
+    title: string,
+    maxAge: int,
+    dirs: [Direction]?,
+    a: <Location?>
 }

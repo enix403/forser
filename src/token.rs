@@ -9,6 +9,8 @@ pub enum TokenKind {
     BraceRight,
     SquareLeft,
     SquareRight,
+    AngleLeft,
+    AngleRight,
     Comma,
     Colon,
     QuestionMark,

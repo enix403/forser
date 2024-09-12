@@ -241,6 +241,7 @@ pub struct Template<'t> {
     pub field_float: TemplateSpan<'t>,
     pub field_bool: TemplateSpan<'t>,
     pub field_array: TemplateSpan<'t>,
+    pub field_map: TemplateSpan<'t>,
     pub field_null: TemplateSpan<'t>,
     pub field_struct: TemplateSpan<'t>,
 
@@ -269,8 +270,9 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
         "string" => template.field_string = span,
         "int" => template.field_int = span,
         "float" => template.field_float = span,
-        "bool_" => template.field_bool = span,
+        "bool" => template.field_bool = span,
         "array" => template.field_array = span,
+        "map" => template.field_map = span,
         "null" => template.field_null = span,
         "struct" => template.field_struct = span,
         _ => {}

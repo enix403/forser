@@ -19,6 +19,9 @@ pub enum TyKind {
 
     // The array type [T]
     Array(Box<TyKind>),
+
+    // The map type <T>
+    Map(Box<TyKind>),
 }
 
 #[derive(Debug, Clone)]

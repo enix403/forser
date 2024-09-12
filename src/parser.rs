@@ -53,7 +53,9 @@ mod guards {
     pub fn ty_recursive(parent: &str, ty: &TyKind) -> bool {
         match ty {
             TyKind::UserDefined(udt) => parent == udt,
-            TyKind::Primitive(..) | TyKind::Array(..) | TyKind::Nullable(..) => false,
+            TyKind::Primitive(..) | TyKind::Array(..) | TyKind::Nullable(..) | TyKind::Map(..) => {
+                false
+            }
         }
     }
 
@@ -122,11 +124,20 @@ where
     }
 
     fn parse_type(&mut self) -> TyKind {
-        let ty = if self.next.kind == TokenKind::SquareLeft {
+        let ty = if self.next.kind == TokenKind::AngleLeft {
             self.consume();
-            let ty = TyKind::Array(Box::new(self.parse_type()));
+
+            let ty = self.parse_type();
+            self.consume_expected(TokenKind::AngleRight);
+
+            TyKind::Map(Box::new(ty))
+        } else if self.next.kind == TokenKind::SquareLeft {
+            self.consume();
+
+            let ty = self.parse_type();
             self.consume_expected(TokenKind::SquareRight);
-            ty
+
+            TyKind::Array(Box::new(ty))
         } else {
             let name = self.parse_ident();
 
@@ -244,7 +255,7 @@ where
                     }
                     TokenKind::IntLiteral(val) => {
                         self.consume();
-                        
+
                         if type_decided && !is_int_enum {
                             self.custom_error("Expected a string, found int");
                         } else {

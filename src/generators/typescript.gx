@@ -12,6 +12,7 @@ int { number }
 float { float }
 bool { boolean }
 array { Array<%T%> }
+map { Record<string, %T%> }
 null { Optional<%T%> }
 struct { %T% }
 

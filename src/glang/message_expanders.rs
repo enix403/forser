@@ -66,6 +66,16 @@ impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
                     template,
                 )?;
             }
+
+            TyKind::Map(inner) => {
+                render_span(
+                    &template.field_map,
+                    dest,
+                    Scope::new().add_expander("T", FieldTypeExpander(inner.as_ref())),
+                    indent,
+                    template,
+                )?;
+            }
         }
 
         Ok(())
@@ -143,23 +153,29 @@ where
         opts: &ExpandOptions,
         template: &Template<'_>,
     ) -> io::Result<()> {
-        newline_delimeters(dest, self.variants.clone(), opts, indent, |variant, dest| {
-            // let value = match format!("{}", variant.value);
-            let value = match &variant.value {
-                EnumVariantValue::Int(val) => val.to_string(),
-                EnumVariantValue::String(val) => format!("\"{}\"", val)
-            };
+        newline_delimeters(
+            dest,
+            self.variants.clone(),
+            opts,
+            indent,
+            |variant, dest| {
+                // let value = match format!("{}", variant.value);
+                let value = match &variant.value {
+                    EnumVariantValue::Int(val) => val.to_string(),
+                    EnumVariantValue::String(val) => format!("\"{}\"", val),
+                };
 
-            render_span(
-                &template.enum_variant,
-                dest,
-                Scope::new()
-                    .add_text("name", &variant.name)
-                    .add_text("val", &value),
+                render_span(
+                    &template.enum_variant,
+                    dest,
+                    Scope::new()
+                        .add_text("name", &variant.name)
+                        .add_text("val", &value),
                     // .add_expander("ty", FieldTypeExpander(&field.datatype)),
-                indent,
-                template,
-            )
-        })
+                    indent,
+                    template,
+                )
+            },
+        )
     }
 }
