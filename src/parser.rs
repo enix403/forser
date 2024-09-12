@@ -53,9 +53,11 @@ mod guards {
     pub fn ty_recursive(parent: &str, ty: &TyKind) -> bool {
         match ty {
             TyKind::UserDefined(udt) => parent == udt,
-            TyKind::Primitive(..) | TyKind::Array(..) | TyKind::Nullable(..) | TyKind::Map(..) => {
-                false
-            }
+            TyKind::Primitive(..)
+            | TyKind::Array(..)
+            | TyKind::Nullable(..)
+            | TyKind::Map(..)
+            | TyKind::Tuple(..) => false,
         }
     }
 
@@ -124,7 +126,30 @@ where
     }
 
     fn parse_type(&mut self) -> TyKind {
-        let ty = if self.next.kind == TokenKind::AngleLeft {
+        let ty = if self.next.kind == TokenKind::ParenLeft {
+            // Tuple
+            self.consume();
+
+            let mut tys: Vec<TyKind> = vec![];
+
+            loop {
+                let ty = self.parse_type();
+
+                // add ty
+                tys.push(ty);
+
+                if matches!(self.next.kind, TokenKind::ParenRight) {
+                    self.consume();
+                    break;
+                }
+
+                self.consume_expected(TokenKind::Comma);
+            }
+
+
+            TyKind::Tuple(tys)
+        } else if self.next.kind == TokenKind::AngleLeft {
+            // Map
             self.consume();
 
             let ty = self.parse_type();
@@ -132,6 +157,7 @@ where
 
             TyKind::Map(Box::new(ty))
         } else if self.next.kind == TokenKind::SquareLeft {
+            // Array
             self.consume();
 
             let ty = self.parse_type();

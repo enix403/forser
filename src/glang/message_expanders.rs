@@ -76,6 +76,18 @@ impl<'a, W: Write> Expander<W> for FieldTypeExpander<'a> {
                     template,
                 )?;
             }
+
+            TyKind::Tuple(inner_tys) => {
+                for inner in inner_tys {
+                    render_span(
+                        &template.field_map,
+                        dest,
+                        Scope::new().add_expander("T", FieldTypeExpander(inner)),
+                        indent,
+                        template,
+                    )?;
+                }
+            }
         }
 
         Ok(())

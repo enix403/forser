@@ -120,6 +120,8 @@ where
             }
 
             let token_kind = match c {
+                '(' => TokenKind::ParenLeft,
+                ')' => TokenKind::ParenRight,
                 '{' => TokenKind::BraceLeft,
                 '}' => TokenKind::BraceRight,
                 '[' => TokenKind::SquareLeft,

@@ -22,6 +22,9 @@ pub enum TyKind {
 
     // The map type <T>
     Map(Box<TyKind>),
+
+    // The tuple type (A, B, C, ...)
+    Tuple(Vec<TyKind>),
 }
 
 #[derive(Debug, Clone)]

@@ -19,6 +19,7 @@ float { float }
 bool { bool }
 array { List[%T%] }
 map { Dict[str, %T%] }
+tuple { [%Ts%] }
 null { Optional[%T%] }
 struct { %T% }
 

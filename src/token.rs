@@ -5,6 +5,8 @@ pub enum TokenKind {
     Enum,
 
     // Punctuation
+    ParenLeft,
+    ParenRight,
     BraceLeft,
     BraceRight,
     SquareLeft,
