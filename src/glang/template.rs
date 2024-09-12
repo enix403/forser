@@ -162,7 +162,7 @@ fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
 struct TemplateSections<'a> {
     prelude: &'a str,
     types: &'a str,
-    type_visitor: &'a str,
+    // type_visitor: &'a str,
     field_visitor: &'a str,
     message_struct: &'a str,
 }
@@ -199,7 +199,7 @@ fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
                     cur_section = Some(match name {
                         "prelude" => &mut sections.prelude,
                         "types" => &mut sections.types,
-                        "type_visitor" => &mut sections.type_visitor,
+                        // "type_visitor" => &mut sections.type_visitor,
                         "field_visitor" => &mut sections.field_visitor,
                         "message_struct" => &mut sections.message_struct,
                         _ => panic!("Unknown Section"),
@@ -238,10 +238,10 @@ pub struct Template<'t> {
     pub field_null: TemplateSpan<'t>,
     pub field_struct: TemplateSpan<'t>,
     /* ... */
-    pub ast_primitive: TemplateSpan<'t>,
-    pub ast_message: TemplateSpan<'t>,
-    pub ast_array: TemplateSpan<'t>,
-    pub ast_main: TemplateSpan<'t>,
+    // pub ast_primitive: TemplateSpan<'t>,
+    // pub ast_message: TemplateSpan<'t>,
+    // pub ast_array: TemplateSpan<'t>,
+    // pub ast_main: TemplateSpan<'t>,
     /* ... */
     pub field_body: TemplateSpan<'t>,
     /* ... */
@@ -265,13 +265,13 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
         _ => {}
     });
 
-    stream_parse_visitors(sections.type_visitor, |name, span| match name {
-        "primitive" => template.ast_primitive = span,
-        "message" => template.ast_message = span,
-        "array" => template.ast_array = span,
-        "main" => template.ast_main = span,
-        _ => {}
-    });
+    // stream_parse_visitors(sections.type_visitor, |name, span| match name {
+    //     "primitive" => template.ast_primitive = span,
+    //     "message" => template.ast_message = span,
+    //     "array" => template.ast_array = span,
+    //     "main" => template.ast_main = span,
+    //     _ => {}
+    // });
 
     template.field_body = compile_span(sections.field_visitor);
     template.message_struct = compile_span(sections.message_struct);
