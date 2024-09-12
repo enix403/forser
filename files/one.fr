@@ -8,5 +8,5 @@ enum Direction {
 struct AppData {
     hello: string,
     age: int,
-    dir: Direction
+    dir: Direction?
 }

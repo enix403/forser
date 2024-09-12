@@ -1,22 +1,10 @@
 #prelude
+
 from __future__ import annotations
+from typing import Optional, List
+
 from enum import Enum
-from typing import (
-    Literal,
-    Optional,
-    cast,
-    Type,
-    TypeVar,
-    Union,
-    Dict,
-    Any,
-    List
-)
-
 from dataclasses import dataclass
-
-class StructMessage:
-    pass
 
 #end/prelude
 
@@ -48,7 +36,7 @@ struct { %T% }
 #message_struct
 
 @dataclass
-class %name%(StructMessage):
+class %name%:
     %fields%
 
 #end/message_struct
@@ -67,5 +55,5 @@ class %name%(StructMessage):
 
 class %name%(Enum):
     %variants%
-
+    
 #end/message_enum

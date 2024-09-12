@@ -263,7 +263,7 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
     let sections = compile_template_sections(source);
     let mut template = Template::default();
 
-    template.prelude = sections.prelude;
+    template.prelude = sections.prelude.trim();
 
     stream_parse_visitors(sections.types, |name, span| match name {
         "string" => template.field_string = span,
@@ -284,11 +284,11 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
     //     _ => {}
     // });
 
-    template.field_body = compile_span(sections.field_visitor);
-    template.message_struct = compile_span(sections.message_struct);
+    template.field_body = compile_span(sections.field_visitor.trim());
+    template.message_struct = compile_span(sections.message_struct.trim());
 
-    template.enum_variant = compile_span(sections.enum_variant_visitor);
-    template.message_enum = compile_span(sections.message_enum);
+    template.enum_variant = compile_span(sections.enum_variant_visitor.trim());
+    template.message_enum = compile_span(sections.message_enum.trim());
 
     template
 }

@@ -22,12 +22,17 @@ pub fn render_template<'a, W: Write>(
     let mut writer = SpanWriter::new(&mut dest);
 
     writer.write_str(template.prelude);
-    writer.write_char('\n')?;
+
+    // One to end the last 
+    // writer.write_char('\n')?;
 
     for enum_ in program.enums.iter() {
       let scope = Scope::new()
         .add_text("name", &enum_.name)
         .add_expander("variants", EnumVariantsExpander::new(enum_.variants.iter()));
+
+        writer.write_char('\n')?;
+        writer.write_char('\n')?;
 
         render_span::<W>(
             &template.message_enum,
@@ -44,6 +49,9 @@ pub fn render_template<'a, W: Write>(
             .add_text("name", &struct_.name)
             .add_expander("fields", FieldExpander::new(struct_.fields.iter()));
 
+        writer.write_char('\n')?;
+        writer.write_char('\n')?;
+
         render_span::<W>(
             &template.message_struct,
             &mut writer,
@@ -52,8 +60,6 @@ pub fn render_template<'a, W: Write>(
             &template,
         )?;
     }
-
-    writer.write_char('\n')?;
 
     Ok(())
 }

@@ -1,13 +1,4 @@
 #prelude
-abstract class StructMessage {}
-
-type FieldsOf<T> = Pick<
-  T,
-  {
-    [K in keyof T]: T[K] extends Function ? never : K;
-  }[keyof T]
->;
-
 type Optional<T> = T | null;
 #end/prelude
 
@@ -30,22 +21,16 @@ struct { %T% }
 // -------------------------------------------------------------- 
 
 #field_visitor
-public %name%!: %ty%;
+%name%: %ty%;
 #end/field_visitor
 
 // -------------------------------------------------------------- 
 // -------------------------------------------------------------- 
 
 #message_struct
-
-export class %name% extends StructMessage {
-  static create(body: FieldsOf<%name%>): %name% {
-    return Object.assign(new %name%(), body);
-  }
-
+export interface %name% {
   %fields%
 }
-
 #end/message_struct
 
 // -------------------------------------------------------------- 
@@ -59,8 +44,7 @@ export class %name% extends StructMessage {
 // -------------------------------------------------------------- 
 
 #message_enum
-
-enum %name% {
+export enum %name% {
   %variants/,%
 }
 
