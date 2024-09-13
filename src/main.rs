@@ -3,12 +3,13 @@
 #![allow(unused_mut)]
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::Parser as ClapParser;
 use lazy_static::lazy_static;
 
+use forser::items::Program;
 use forser::language::Language;
 use forser::lexer::ForserFile;
 use forser::lexer::Lexer;
@@ -18,8 +19,8 @@ use forser::parser::{ParseError, Parser};
 #[command(version, about, long_about = None)]
 #[command(next_line_help = true)]
 struct Args {
-    /// Input file
-    in_file: PathBuf,
+    /// Input file(s)
+    in_files: Vec<PathBuf>,
 
     /// Comma separated list of target languages
     #[clap(
@@ -59,57 +60,73 @@ lazy_static! {
     };
 }
 
+// TODO: optimise
+fn write_programs(args: &Args, tasks: Vec<(&PathBuf, Program)>) {
+    let generators = args
+        .langs
+        .iter()
+        .map(|lang| {
+            let generator = GENERATORS.get(lang.as_str());
+            generator.map(|bx| bx.as_ref()).ok_or(lang)
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|unknown_lang| {
+            panic!("Unknown language \"{}\"", unknown_lang);
+        });
+
+    let out_dir = PathBuf::from(&args.out_dir);
+
+    for gen in generators {
+        // Append language id to final output path if lang_dir is true
+        let mut out = if args.lang_dir {
+            out_dir.join(gen.lang_id())
+        } else {
+            out_dir.clone()
+        };
+
+        std::fs::create_dir_all(&out).expect("Failed to create output directory");
+
+        for (in_file, program) in tasks.iter() {
+            let in_file_name = in_file.file_stem().and_then(|p| p.to_str()).unwrap();
+
+            let filename = args
+                .out_filename
+                .replace("[name]", in_file_name)
+                .replace("[ext]", gen.extension());
+
+            let out = out.join(filename);
+
+            gen.generate(&program, &out);
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args = Args::parse();
 
-    let file = ForserFile::new(&args.in_file).expect("Failed to open files");
-    let mut source = file.source();
-    let mut lex = Lexer::new(&mut source);
+    let tasks = args
+        .in_files
+        .iter()
+        .map(|in_file| {
+            let file = ForserFile::new(&in_file).expect("Failed to open file");
+            let mut source = file.source();
+            let mut lex = Lexer::new(&mut source);
 
-    let mut parser = Parser::new(lex);
-    let program = parser
-        .parse()
-        .map_err(|errors| unsafe { errors.get_unchecked(0).clone() });
+            let mut parser = Parser::new(lex);
+            let task = parser
+                .parse()
+                .map(|program| (in_file, program))
+                .map_err(|errors| unsafe { errors.get_unchecked(0).clone() });
 
-    match program {
-        Ok(program) => {
-            let generators = args
-                .langs
-                .iter()
-                .map(|lang| {
-                    let generator = GENERATORS.get(lang.as_str());
-                    generator.map(|bx| bx.as_ref()).ok_or(lang)
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .unwrap_or_else(|unknown_lang| {
-                    panic!("Unknown language \"{}\"", unknown_lang);
-                });
+            task
+        })
+        .collect::<Result<Vec<_>, _>>();
 
-            let out_dir = PathBuf::from(args.out_dir);
-            let in_file_name = args.in_file.file_stem().and_then(|p| p.to_str()).unwrap();
-
-            for gen in generators {
-                // Append language id to final output path if lang_dir is true
-                let mut out = if args.lang_dir {
-                    out_dir.join(gen.lang_id())
-                } else {
-                    out_dir.clone()
-                };
-
-                std::fs::create_dir_all(&out).expect("Failed to create output directory");
-
-                let filename = args
-                    .out_filename
-                    .replace("[name]", in_file_name)
-                    .replace("[ext]", gen.extension());
-
-                out.push(filename);
-
-                gen.generate(&program, &out);
-            }
-
+    match tasks {
+        Ok(tasks) => {
+            write_programs(&args, tasks);
             ExitCode::SUCCESS
-        }
+        },
         Err(err) => {
             eprintln!("{}", err);
             ExitCode::FAILURE
