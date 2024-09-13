@@ -31,11 +31,14 @@ pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
         let mut last_end = 0;
 
         for caps in re.captures_iter(line) {
-            let start = caps.get(0).unwrap().start();
-            let end = caps.get(0).unwrap().end();
+            let w_start = caps.get(0).unwrap().start();
+            let w_end = caps.get(0).unwrap().end();
 
-            if start > last_end {
-                instructions.push(Instruction::Literal(&line[last_end..start]));
+            let start = caps.get(1).unwrap().start();
+            let end = caps.get(1).unwrap().end();
+
+            if w_start > last_end {
+                instructions.push(Instruction::Literal(&line[last_end..w_start]));
             }
 
             instructions.push(Instruction::Expand {
@@ -46,7 +49,7 @@ pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
                 },
             });
 
-            last_end = end;
+            last_end = w_end;
         }
 
         if last_end < line.len() {
