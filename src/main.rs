@@ -18,10 +18,10 @@ use forser::parser::{ParseError, Parser};
 #[command(version, about, long_about = None)]
 #[command(next_line_help = true)]
 struct Args {
-    /// Path to the input file
+    /// Input file
     in_file: PathBuf,
 
-    /// Languages to generate the build for
+    /// Comma separated list of target languages
     #[clap(
         short, long,
         required = true,
@@ -32,14 +32,19 @@ struct Args {
     )]
     langs: Vec<String>,
 
-    /// Directory where the build files will be stored
-    #[arg(short = 'd', long, default_value = "build")]
+    /// Directory where the generated files will be stored
+    #[arg(short = 'd', long, default_value = ".")]
     out_dir: String,
 
-    /// Directory where the build files will be stored
-    #[arg(short, long)]
-    no_lang_dir: bool,
+    /// Put generated file(s) of each language in its own subdirectory under `out_dir`
+    #[arg(short = 'a', long, default_value = "false")]
+    lang_dir: bool,
 
+    /// Name of generated file(s).
+    ///
+    /// `[name]` is replaced by the filename of corresponding input file
+    ///
+    /// `[ext]` is replaced by the standard extension of the generated language
     #[arg(short = 'f', long, default_value = "[name].[ext]")]
     out_filename: String,
 }
@@ -72,7 +77,6 @@ fn main() -> ExitCode {
                 .langs
                 .iter()
                 .map(|lang| {
-                    // GENERATORS.get(lang.as_str()).map(|bx| bx.as_ref())
                     let generator = GENERATORS.get(lang.as_str());
                     generator.map(|bx| bx.as_ref()).ok_or(lang)
                 })
@@ -85,12 +89,11 @@ fn main() -> ExitCode {
             let in_file_name = args.in_file.file_stem().and_then(|p| p.to_str()).unwrap();
 
             for gen in generators {
-                // Append language id to final output path if
-                // no_lang_dir is false
-                let mut out = if args.no_lang_dir {
-                    out_dir.clone()
-                } else {
+                // Append language id to final output path if lang_dir is true
+                let mut out = if args.lang_dir {
                     out_dir.join(gen.lang_id())
+                } else {
+                    out_dir.clone()
                 };
 
                 std::fs::create_dir_all(&out).expect("Failed to create output directory");
