@@ -79,14 +79,11 @@ pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
             let w_start = caps.get(0).unwrap().start();
             let w_end = caps.get(0).unwrap().end();
 
-            let start = caps.get(1).unwrap().start();
-            let end = caps.get(1).unwrap().end();
-
             if w_start > last_end {
                 instructions.push(Instruction::Literal(&line[last_end..w_start]));
             }
 
-            let rep_source = &line[start..end];
+            let rep_source = caps.get(1).unwrap().as_str();
             let (var, opts) = parse_replacer(rep_source);
 
             instructions.push(Instruction::Expand { var, opts });
