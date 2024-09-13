@@ -6,6 +6,7 @@ mod expander;
 mod message_expanders;
 mod scope;
 mod template;
+mod span_compiler;
 
 use emit::{render_span, SpanWriter};
 use message_expanders::{FieldExpander, EnumVariantsExpander};

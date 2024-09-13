@@ -22,6 +22,42 @@ pub struct TemplateSpan<'t> {
     pub instructions: Vec<Instruction<'t>>,
 }
 
+pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
+    let mut instructions: Vec<Instruction> = vec![];
+
+    let re = regex::Regex::new(r"%([^%]+)%").unwrap();
+
+    for line in content.lines() {
+        let mut last_end = 0;
+
+        for caps in re.captures_iter(line) {
+            let start = caps.get(0).unwrap().start();
+            let end = caps.get(0).unwrap().end();
+
+            if start > last_end {
+                instructions.push(Instruction::Literal(&line[last_end..start]));
+            }
+
+            instructions.push(Instruction::Expand {
+                var: &line[start..end],
+                opts: ExpandOptions {
+                    delimeter: None,
+                    trailing: false,
+                },
+            });
+
+            last_end = end;
+        }
+
+        if last_end < line.len() {
+            instructions.push(Instruction::Literal(&line[last_end..]));
+        }
+    }
+
+    TemplateSpan { instructions }
+}
+
+/*
 fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
     let mut instructions = vec![];
 
@@ -154,6 +190,8 @@ fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
     TemplateSpan { instructions }
 }
 
+*/
+
 /* ==================================== */
 /* ==================================== */
 /* ==================================== */
@@ -235,7 +273,7 @@ fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
 #[derive(Debug, Clone, Default)]
 pub struct Template<'t> {
     pub prelude: &'t str,
-    
+
     pub field_string: TemplateSpan<'t>,
     pub field_int: TemplateSpan<'t>,
     pub field_float: TemplateSpan<'t>,
