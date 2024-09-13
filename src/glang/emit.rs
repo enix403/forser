@@ -59,8 +59,8 @@ where
     let mut is_tail = false;
     for item in items {
         if is_tail {
-            if let Some(delim) = opts.delimeter {
-                writer.write_char(delim)?;
+            if let Some(delim) = &opts.delimeter {
+                writer.write_str(delim.as_str())?;
             }
             writer.write_char('\n')?;
             writer.do_indent(indent)?;
@@ -73,7 +73,7 @@ where
     }
 
     if opts.trailing && opts.delimeter.is_some() {
-        writer.write_char(opts.delimeter.unwrap())?;
+        writer.write_str(opts.delimeter.as_ref().unwrap())?;
     }
 
     Ok(())

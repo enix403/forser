@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, Default)]
 pub struct ExpandOptions {
     // The delimeter between items emitted from this (multi) variable
-    pub delimeter: Option<char>,
+    pub delimeter: Option<String>,
     // Should the delimeter be emitted after the last item ?
     pub trailing: bool,
 }
@@ -20,6 +20,30 @@ pub enum Instruction<'t> {
 #[derive(Clone, Debug, Default)]
 pub struct TemplateSpan<'t> {
     pub instructions: Vec<Instruction<'t>>,
+}
+
+/*
+%var/,/+%
+*/
+fn parse_replacer<'t>(source: &'t str) -> (&'t str, ExpandOptions) {
+    let parts = source.split('/').collect::<Vec<_>>();
+
+    let var = parts[0];
+
+    let mut delimeter = None;
+    let mut trailing = false;
+
+    if parts.len() > 1 {
+        delimeter = Some(parts[1].to_string());
+        trailing = parts.len() > 2 && parts[2] == "+";
+    }
+
+    let opts = ExpandOptions {
+        delimeter,
+        trailing,
+    };
+
+    (var, opts)
 }
 
 pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
@@ -41,13 +65,10 @@ pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
                 instructions.push(Instruction::Literal(&line[last_end..w_start]));
             }
 
-            instructions.push(Instruction::Expand {
-                var: &line[start..end],
-                opts: ExpandOptions {
-                    delimeter: None,
-                    trailing: false,
-                },
-            });
+            let rep_source = &line[start..end];
+            let (var, opts) = parse_replacer(rep_source);
+
+            instructions.push(Instruction::Expand { var, opts });
 
             last_end = w_end;
         }
