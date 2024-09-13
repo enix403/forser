@@ -51,8 +51,24 @@ pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
 
     let re = regex::Regex::new(r"%([^%]+)%").unwrap();
 
+    let mut is_tail = false;
+
     for line in content.lines() {
+        if is_tail {
+            instructions.push(Instruction::Newline);
+        } else {
+            is_tail = true;
+        }
+
         let mut last_end = 0;
+
+        let leading_whitespace_count =
+            line.chars().take_while(|c| c.is_whitespace()).count() as u16;
+
+        if leading_whitespace_count > 0 {
+            instructions.push(Instruction::Indent(leading_whitespace_count));
+            last_end = leading_whitespace_count as usize;
+        }
 
         for caps in re.captures_iter(line) {
             let w_start = caps.get(0).unwrap().start();
