@@ -1,7 +1,7 @@
 enum Direction {
-    Right = 1,
-    Left,
+    Right = 0,
     Up,
+    Left,
     Down
 }
 

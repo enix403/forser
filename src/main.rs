@@ -20,6 +20,10 @@ use forser::parser::{ParseError, Parser};
 #[command(next_line_help = true)]
 struct Args {
     /// Input file(s)
+    #[clap(
+        num_args = 1..,
+        required = true
+    )]
     in_files: Vec<PathBuf>,
 
     /// Comma separated list of target languages
