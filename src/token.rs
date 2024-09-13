@@ -3,6 +3,7 @@ pub enum TokenKind {
     // Keywords
     Struct,
     Enum,
+    Type,
 
     // Punctuation
     ParenLeft,
@@ -15,6 +16,7 @@ pub enum TokenKind {
     AngleRight,
     Comma,
     Colon,
+    Semicolon,
     QuestionMark,
     Equal,
 
@@ -58,6 +60,7 @@ pub fn to_keyword(ident: &str) -> Option<TokenKind> {
     match ident {
         "struct" => Some(TokenKind::Struct),
         "enum" => Some(TokenKind::Enum),
+        "type" => Some(TokenKind::Type),
         _ => None,
     }
 }

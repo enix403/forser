@@ -58,7 +58,14 @@ pub struct EnumDefinition {
 }
 
 #[derive(Debug, Clone)]
+pub struct TypeAlias {
+    pub name: String,
+    pub typ: TyKind,
+}
+
+#[derive(Debug, Clone)]
 pub struct Program {
     pub structs: Vec<StructDefinition>,
     pub enums: Vec<EnumDefinition>,
+    pub type_aliases: Vec<TypeAlias>,
 }

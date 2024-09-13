@@ -1,6 +1,8 @@
 use crate::items::{
-    EnumDefinition, EnumVariant, EnumVariantValue, PrimitiveType, Program, StructDefinition,
+    EnumDefinition,
+    EnumVariant, EnumVariantValue, PrimitiveType, Program, StructDefinition,
     StructField, TyKind,
+    TypeAlias
 };
 use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
@@ -41,6 +43,7 @@ pub struct Parser<L> {
     // Items
     structs: HashMap<String, StructDefinition>,
     enums: HashMap<String, EnumDefinition>,
+    type_aliases: HashMap<String, TypeAlias>,
 
     // Validation
     /// Set of user defined types yet to be found
@@ -81,6 +84,7 @@ where
             errors: vec![],
             structs: HashMap::new(),
             enums: HashMap::new(),
+            type_aliases: HashMap::new(),
             pending_types: HashSet::new(),
         }
     }
@@ -322,12 +326,29 @@ where
         self.enums.insert(enum_.name.clone(), enum_);
     }
 
+    fn parse_type_alias(&mut self) {
+        let alias_name = self.parse_ident();
+        self.consume_expected(TokenKind::Equal);
+        let ty = self.parse_type();
+        self.consume_expected(TokenKind::Semicolon);
+
+        self.pending_types.remove(&alias_name);
+
+        let type_alias = TypeAlias {
+            name: alias_name,
+            typ: ty
+        };
+
+        self.type_aliases.insert(type_alias.name.clone(), type_alias);
+    }
+
     pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {
         loop {
             self.consume();
             match self.current.kind {
                 TokenKind::Struct => self.parse_struct(),
                 TokenKind::Enum => self.parse_enum(),
+                TokenKind::Type => self.parse_type_alias(),
                 TokenKind::Eof => break,
                 _ => self.syntax_error(None),
             }
@@ -345,6 +366,7 @@ where
             Ok(Program {
                 structs: self.structs.into_values().collect(),
                 enums: self.enums.into_values().collect(),
+                type_aliases: self.type_aliases.into_values().collect(),
             })
         }
     }

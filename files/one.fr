@@ -16,3 +16,5 @@ struct AppData {
     dirs: [Direction]?,
     kvs: [(int, <Direction>)]
 }
+
+type Another = AppData;

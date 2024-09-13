@@ -130,6 +130,7 @@ where
                 '>' => TokenKind::AngleRight,
                 ',' => TokenKind::Comma,
                 ':' => TokenKind::Colon,
+                ';' => TokenKind::Semicolon,
                 '=' => TokenKind::Equal,
                 '?' => TokenKind::QuestionMark,
                 'a'..='z' | 'A'..='Z' => {

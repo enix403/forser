@@ -1,0 +1,5 @@
+struct A {
+    inner: int
+}
+
+type B = A;
