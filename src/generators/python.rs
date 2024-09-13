@@ -21,12 +21,17 @@ impl Language for PythonGenerator {
     fn lang_id(&self) -> &'static str {
         "py"
     }
-    fn generate(&self, program: &Program, outdir: &Path) {
+
+    fn extension(&self) -> &'static str {
+        "py"
+    }
+
+    fn generate(&self, program: &Program, outfile: &Path) {
         let dest = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(outdir.join("main.py"))
+            .open(outfile)
             .expect("Failed to open file");
 
         render_template(include_str!("python.gx"), program, dest).unwrap();

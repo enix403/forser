@@ -33,22 +33,14 @@ struct Args {
     langs: Vec<String>,
 
     /// Directory where the build files will be stored
-    #[arg(
-        short = 'd', long,
-        default_value = "build"
-    )]
+    #[arg(short = 'd', long, default_value = "build")]
     out_dir: String,
 
     /// Directory where the build files will be stored
-    #[arg(
-        short, long,
-    )]
+    #[arg(short, long)]
     no_lang_dir: bool,
 
-    #[arg(
-        short = 'f', long,
-        default_value = "[name].[ext]"
-    )]
+    #[arg(short = 'f', long, default_value = "[name].[ext]")]
     out_filename: String,
 }
 
@@ -65,7 +57,7 @@ lazy_static! {
 fn main() -> ExitCode {
     let args = Args::parse();
 
-    let file = ForserFile::new(args.in_file).expect("Failed to open files");
+    let file = ForserFile::new(&args.in_file).expect("Failed to open files");
     let mut source = file.source();
     let mut lex = Lexer::new(&mut source);
 
@@ -89,14 +81,28 @@ fn main() -> ExitCode {
                     panic!("Unknown language \"{}\"", unknown_lang);
                 });
 
-            let build_dir = PathBuf::from(args.out_dir);
+            let out_dir = PathBuf::from(args.out_dir);
+            let in_file_name = args.in_file.file_stem().and_then(|p| p.to_str()).unwrap();
 
             for gen in generators {
-                let gen_outdir = build_dir.join(gen.lang_id());
+                // Append language id to final output path if
+                // no_lang_dir is false
+                let mut out = if args.no_lang_dir {
+                    out_dir.clone()
+                } else {
+                    out_dir.join(gen.lang_id())
+                };
 
-                std::fs::create_dir_all(&gen_outdir).expect("Failed to create output directory");
+                std::fs::create_dir_all(&out).expect("Failed to create output directory");
 
-                gen.generate(&program, &gen_outdir);
+                let filename = args
+                    .out_filename
+                    .replace("[name]", in_file_name)
+                    .replace("[ext]", gen.extension());
+
+                out.push(filename);
+
+                gen.generate(&program, &out);
             }
 
             ExitCode::SUCCESS

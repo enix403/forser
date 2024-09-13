@@ -22,12 +22,16 @@ impl Language for TypeScriptGenerator {
         "ts"
     }
 
-    fn generate(&self, program: &Program, outdir: &Path) {
+    fn extension(&self) -> &'static str {
+        "ts"
+    }
+
+    fn generate(&self, program: &Program, outfile: &Path) {
         let dest = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(outdir.join("main.ts"))
+            .open(outfile)
             .expect("Failed to open file");
 
         render_template(include_str!("typescript.gx"), program, dest).unwrap();
