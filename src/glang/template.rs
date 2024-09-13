@@ -185,12 +185,15 @@ fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
 pub struct Template<'t> {
     pub prelude: &'t str,
 
+    pub echo: TemplateSpan<'t>,
+
     pub field_string: TemplateSpan<'t>,
     pub field_int: TemplateSpan<'t>,
     pub field_float: TemplateSpan<'t>,
     pub field_bool: TemplateSpan<'t>,
     pub field_array: TemplateSpan<'t>,
     pub field_map: TemplateSpan<'t>,
+    pub field_tuple: TemplateSpan<'t>,
     pub field_null: TemplateSpan<'t>,
     pub field_struct: TemplateSpan<'t>,
 
@@ -214,6 +217,7 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
     let mut template = Template::default();
 
     template.prelude = sections.prelude.trim();
+    template.echo = compile_span("%value%");
 
     stream_parse_visitors(sections.types, |name, span| match name {
         "string" => template.field_string = span,
@@ -222,6 +226,7 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
         "bool" => template.field_bool = span,
         "array" => template.field_array = span,
         "map" => template.field_map = span,
+        "tuple" => template.field_tuple = span,
         "null" => template.field_null = span,
         "struct" => template.field_struct = span,
         _ => {}

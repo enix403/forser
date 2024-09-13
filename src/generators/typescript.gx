@@ -13,6 +13,7 @@ float { float }
 bool { boolean }
 array { Array<%T%> }
 map { Record<string, %T%> }
+tuple { [%Ts/, /-/i%] }
 null { Optional<%T%> }
 struct { %T% }
 

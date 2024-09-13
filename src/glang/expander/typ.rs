@@ -1,11 +1,52 @@
 use std::io::{self, Write};
+use std::marker::PhantomData;
 
 use crate::items::{PrimitiveType, TyKind};
 
-use crate::glang::emit::render_span;
+use crate::glang::emit::{newline_delimeters, render_span};
 use crate::glang::expander::Expander;
 use crate::glang::scope::Scope;
 use crate::glang::template::{ExpandOptions, Template};
+
+struct TupleTypeExpander<'a, F> {
+    types: F,
+    _phantom: PhantomData<&'a ()>,
+}
+
+impl<'a, F> TupleTypeExpander<'a, F> {
+    pub fn new(types: F) -> Self {
+        Self {
+            types,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, F, W> Expander<W> for TupleTypeExpander<'a, F>
+where
+    W: Write,
+    F: Iterator<Item = &'a TyKind> + Clone,
+{
+    fn expand(
+        &mut self,
+        dest: &mut W,
+        indent: u16,
+        opts: &ExpandOptions,
+        template: &Template<'_>,
+    ) -> io::Result<()> {
+        newline_delimeters(dest, self.types.clone(), opts, indent, |tykind, dest| {
+            render_span(
+                &template.echo,
+                dest,
+                Scope::new().add_expander("value", TypeExpander(tykind)),
+                indent,
+                template,
+            )
+        })
+    }
+}
+
+/* --------- */
 
 pub struct TypeExpander<'s>(pub &'s TyKind);
 
@@ -74,15 +115,13 @@ impl<'a, W: Write> Expander<W> for TypeExpander<'a> {
             }
 
             TyKind::Tuple(inner_tys) => {
-                for inner in inner_tys {
-                    render_span(
-                        &template.field_map,
-                        dest,
-                        Scope::new().add_expander("T", TypeExpander(inner)),
-                        indent,
-                        template,
-                    )?;
-                }
+                render_span(
+                    &template.field_tuple,
+                    dest,
+                    Scope::new().add_expander("Ts", TupleTypeExpander::new(inner_tys.iter())),
+                    indent,
+                    template,
+                )?;
             }
         }
 

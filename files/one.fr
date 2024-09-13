@@ -14,5 +14,5 @@ struct AppData {
     title: string,
     maxAge: int,
     dirs: [Direction]?,
-    // a: (string, Direction, int)
+    a: (string, Direction, int)
 }
