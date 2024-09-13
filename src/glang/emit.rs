@@ -62,8 +62,10 @@ where
             if let Some(delim) = &opts.delimeter {
                 writer.write_str(delim.as_str())?;
             }
-            writer.write_char('\n')?;
-            writer.do_indent(indent)?;
+            if !opts.inline {
+                writer.write_char('\n')?;
+                writer.do_indent(indent)?;
+            }
         } else {
             is_tail = true;
         }
