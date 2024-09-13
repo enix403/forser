@@ -1,15 +1,7 @@
 use std::io::{self, Write};
-use super::template::{ExpandOptions, Template};
+use super::Expander;
 
-pub trait Expander<W> {
-    fn expand(
-        &mut self,
-        dest: &mut W,
-        indent: u16,
-        opts: &ExpandOptions,
-        template: &Template<'_>,
-    ) -> io::Result<()>;
-}
+use crate::glang::template::{ExpandOptions, Template};
 
 pub struct TextExpander<'a>(/* text: */ pub &'a str);
 
