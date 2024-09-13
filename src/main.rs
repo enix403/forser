@@ -21,13 +21,6 @@ struct Args {
     /// Path to the input file
     in_file: PathBuf,
 
-    /// Directory where the build files will be stored
-    #[arg(
-        short, long,
-        default_value = "build"
-    )]
-    out_dir: String,
-
     /// Languages to generate the build for
     #[clap(
         short, long,
@@ -38,6 +31,25 @@ struct Args {
         value_delimiter = ','
     )]
     langs: Vec<String>,
+
+    /// Directory where the build files will be stored
+    #[arg(
+        short = 'd', long,
+        default_value = "build"
+    )]
+    out_dir: String,
+
+    /// Directory where the build files will be stored
+    #[arg(
+        short, long,
+    )]
+    no_lang_dir: bool,
+
+    #[arg(
+        short = 'f', long,
+        default_value = "[name].[ext]"
+    )]
+    out_filename: String,
 }
 
 lazy_static! {
