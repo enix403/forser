@@ -22,8 +22,11 @@ struct Args {
     in_file: PathBuf,
 
     /// Directory where the build files will be stored
-    #[arg(long, short)]
-    out_dir: Option<PathBuf>,
+    #[arg(
+        short, long,
+        default_value = "build"
+    )]
+    out_dir: String,
 
     /// Languages to generate the build for
     #[clap(
@@ -74,10 +77,11 @@ fn main() -> ExitCode {
                     panic!("Unknown language \"{}\"", unknown_lang);
                 });
 
-            let build_dir = args.out_dir.unwrap_or_else(|| "build".into());
+            let build_dir = PathBuf::from(args.out_dir);
 
             for gen in generators {
                 let gen_outdir = build_dir.join(gen.lang_id());
+
                 std::fs::create_dir_all(&gen_outdir).expect("Failed to create output directory");
 
                 gen.generate(&program, &gen_outdir);
