@@ -115,6 +115,7 @@ struct TemplateSections<'a> {
     // enums
     enum_variant_visitor: &'a str,
     message_enum: &'a str,
+    type_alias: &'a str,
 }
 
 fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
@@ -154,6 +155,7 @@ fn compile_template_sections<'a>(source: &'a str) -> TemplateSections<'a> {
                         "message_struct" => &mut sections.message_struct,
                         "enum_variant_visitor" => &mut sections.enum_variant_visitor,
                         "message_enum" => &mut sections.message_enum,
+                        "type_alias" => &mut sections.type_alias,
                         _ => panic!("Unknown Section \"{}\"", name),
                     });
 
@@ -207,6 +209,9 @@ pub struct Template<'t> {
     /* Enums */
     pub enum_variant: TemplateSpan<'t>,
     pub message_enum: TemplateSpan<'t>,
+
+    /* Type Aliases */
+    pub type_alias: TemplateSpan<'t>
 }
 
 pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
@@ -229,19 +234,12 @@ pub fn compile_template<'a>(source: &'a str) -> Template<'a> {
         _ => {}
     });
 
-    // stream_parse_visitors(sections.type_visitor, |name, span| match name {
-    //     "primitive" => template.ast_primitive = span,
-    //     "message" => template.ast_message = span,
-    //     "array" => template.ast_array = span,
-    //     "main" => template.ast_main = span,
-    //     _ => {}
-    // });
-
     template.field_body = compile_span(sections.field_visitor.trim());
     template.message_struct = compile_span(sections.message_struct.trim());
 
     template.enum_variant = compile_span(sections.enum_variant_visitor.trim());
     template.message_enum = compile_span(sections.message_enum.trim());
+    template.type_alias = compile_span(sections.type_alias.trim());
 
     template
 }

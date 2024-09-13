@@ -17,4 +17,4 @@ struct AppData {
     kvs: [(int, <Direction>)]
 }
 
-type Another = AppData;
+type Another = [AppData?]?;

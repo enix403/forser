@@ -9,6 +9,7 @@ mod template;
 use emit::{render_span, SpanWriter};
 use expander::msg_struct::StructFieldsExpander;
 use expander::msg_enum::EnumVariantsExpander;
+use expander::typ::TypeExpander;
 use scope::Scope;
 use template::compile_template;
 
@@ -51,6 +52,23 @@ pub fn render_template<'a, W: Write>(
 
         render_span::<W>(
             &template.message_struct,
+            &mut writer,
+            scope,
+            0,
+            &template,
+        )?;
+    }
+
+    for alias in program.type_aliases.iter() {
+      let scope = Scope::new()
+        .add_text("name", &alias.name)
+        .add_expander("T", TypeExpander(&alias.typ));
+
+        writer.write_char('\n')?;
+        writer.write_char('\n')?;
+
+        render_span::<W>(
+            &template.type_alias,
             &mut writer,
             scope,
             0,
