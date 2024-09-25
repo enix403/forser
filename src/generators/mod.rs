@@ -1,5 +1,5 @@
-mod typescript;
 mod python;
+mod typescript;
 
-pub use typescript::TypeScriptGenerator;
 pub use python::PythonGenerator;
+pub use typescript::TypeScriptGenerator;

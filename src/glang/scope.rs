@@ -1,4 +1,4 @@
-use super::expander::{Expander, text::TextExpander};
+use super::expander::{text::TextExpander, Expander};
 
 use std::collections::HashMap;
 use std::io::Write;

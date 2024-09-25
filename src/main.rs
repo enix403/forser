@@ -130,7 +130,7 @@ fn main() -> ExitCode {
         Ok(tasks) => {
             write_programs(&args, tasks);
             ExitCode::SUCCESS
-        },
+        }
         Err(err) => {
             eprintln!("{}", err);
             ExitCode::FAILURE

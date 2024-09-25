@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
 use crate::items::Program;
+use std::path::{Path, PathBuf};
 
 pub trait Language: Sync {
     fn lang_id(&self) -> &'static str;

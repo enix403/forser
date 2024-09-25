@@ -22,7 +22,6 @@ fn main() {
     let program = get_test_program();
 
     glang::render_template(CODE, &program, std::io::stdout());
-
 }
 
 static CODE: &'static str = r#"

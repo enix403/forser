@@ -1,8 +1,6 @@
 use crate::items::{
-    EnumDefinition,
-    EnumVariant, EnumVariantValue, PrimitiveType, Program, StructDefinition,
-    StructField, TyKind,
-    TypeAlias
+    EnumDefinition, EnumVariant, EnumVariantValue, PrimitiveType, Program, StructDefinition,
+    StructField, TyKind, TypeAlias,
 };
 use crate::lexer::TokenStream;
 use crate::token::{Token, TokenKind};
@@ -149,7 +147,6 @@ where
 
                 self.consume_expected(TokenKind::Comma);
             }
-
 
             TyKind::Tuple(tys)
         } else if self.next.kind == TokenKind::AngleLeft {
@@ -336,10 +333,11 @@ where
 
         let type_alias = TypeAlias {
             name: alias_name,
-            typ: ty
+            typ: ty,
         };
 
-        self.type_aliases.insert(type_alias.name.clone(), type_alias);
+        self.type_aliases
+            .insert(type_alias.name.clone(), type_alias);
     }
 
     pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {

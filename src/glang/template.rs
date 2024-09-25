@@ -43,7 +43,7 @@ fn parse_replacer<'t>(source: &'t str) -> (&'t str, ExpandOptions) {
     let opts = ExpandOptions {
         delimeter,
         trailing,
-        inline
+        inline,
     };
 
     (var, opts)
@@ -98,7 +98,6 @@ pub fn compile_span<'t>(content: &'t str) -> TemplateSpan<'t> {
 
     TemplateSpan { instructions }
 }
-
 
 /* ==================================== */
 /* ==================================== */
@@ -211,7 +210,7 @@ pub struct Template<'t> {
     pub message_enum: TemplateSpan<'t>,
 
     /* Type Aliases */
-    pub type_alias: TemplateSpan<'t>
+    pub type_alias: TemplateSpan<'t>,
 }
 
 pub fn compile_template<'a>(source: &'a str) -> Template<'a> {

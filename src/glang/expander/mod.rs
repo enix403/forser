@@ -1,10 +1,10 @@
-use std::io::{self, Write};
 use super::template::{ExpandOptions, Template};
+use std::io::{self, Write};
 
+pub mod msg_enum;
+pub mod msg_struct;
 pub mod text;
 pub mod typ;
-pub mod msg_struct;
-pub mod msg_enum;
 
 pub trait Expander<W> {
     fn expand(

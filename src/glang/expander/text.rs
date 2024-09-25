@@ -1,5 +1,5 @@
-use std::io::{self, Write};
 use super::Expander;
+use std::io::{self, Write};
 
 use crate::glang::template::{ExpandOptions, Template};
 

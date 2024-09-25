@@ -3,7 +3,7 @@ pub enum PrimitiveType {
     String,
     Int,
     Float,
-    Bool
+    Bool,
 }
 
 #[derive(Debug, Clone)]
@@ -42,13 +42,13 @@ pub struct StructDefinition {
 #[derive(Debug, Clone)]
 pub enum EnumVariantValue {
     Int(i32),
-    String(String)
+    String(String),
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumVariant {
     pub name: String,
-    pub value: EnumVariantValue
+    pub value: EnumVariantValue,
 }
 
 #[derive(Debug, Clone)]
